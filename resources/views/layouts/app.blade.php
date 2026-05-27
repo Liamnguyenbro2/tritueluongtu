@@ -35,6 +35,26 @@
                 radial-gradient(circle at 50% 100%, rgba(14,165,233,.12), transparent 32%),
                 #060711;
         }
+        html, body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        img, video, canvas, svg {
+            max-width: 100%;
+        }
+        svg {
+            flex-shrink: 0;
+        }
+        main, section, article, form, .grid, .flex {
+            min-width: 0;
+        }
+        .grid > *, .flex > * {
+            min-width: 0;
+        }
         .glass {
             background: linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
             border: 1px solid rgba(255,255,255,.12);
@@ -63,6 +83,20 @@
         input, textarea, select {
             -webkit-user-select: text;
             user-select: text;
+        }
+        .break-anywhere {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        @media (max-width: 640px) {
+            .glass {
+                box-shadow: 0 18px 50px rgba(0,0,0,.32);
+            }
+            .mobile-wrap {
+                white-space: normal;
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
         }
         img, video {
             -webkit-user-drag: none;
@@ -159,7 +193,7 @@
     @endauth
 </aside>
 
-<div class="relative z-10 min-h-screen lg:pl-72">
+<div class="relative z-10 min-h-screen max-w-full overflow-x-hidden lg:pl-72">
     <header class="sticky top-0 z-30 border-b border-white/10 bg-night/65 backdrop-blur-2xl">
         <div class="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-10">
             <button class="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 lg:hidden" @click="sidebarOpen = true">
@@ -237,7 +271,7 @@
         </div>
     </header>
 
-    <main class="px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+    <main class="max-w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
         @if(session('status'))
             <div class="mb-6 flex items-center gap-3 rounded-[24px] border border-emerald-300/20 bg-emerald-400/10 px-5 py-4 text-emerald-100 shadow-lg shadow-emerald-950/30">
                 <i data-lucide="check-circle-2" class="h-5 w-5"></i>{{ session('status') }}
