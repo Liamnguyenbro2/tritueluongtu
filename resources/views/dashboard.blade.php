@@ -22,7 +22,7 @@
         <div class="relative grid min-w-0 gap-6 sm:gap-8 xl:grid-cols-[1.25fr_.75fr]">
             <div class="min-w-0">
                 <div class="mobile-wrap mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[.14em] text-violet-100 sm:px-4 sm:text-xs sm:tracking-[.24em]">
-                    <i data-lucide="sparkles" class="h-4 w-4"></i> Quantum Library
+                    <i data-lucide="sparkles" class="h-4 w-4"></i> Trí tuệ lượng tử
                 </div>
                 <p class="text-sm text-slate-300">Xin chào,</p>
                 <h1 class="break-anywhere mt-1 text-3xl font-black tracking-tight text-white sm:text-6xl">{{ auth()->user()->name }}</h1>
@@ -112,77 +112,77 @@
             <div class="break-anywhere w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center text-sm text-slate-300 sm:w-auto sm:rounded-full sm:text-left">Premium cinematic thumbnails</div>
         </div>
 
-        <div class="grid min-w-0 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid min-w-0 grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
             @foreach($lessons as $lesson)
                 @php $thumb = $lesson['thumbnail_url'] ?: $thumbs[($lesson['position'] - 1) % count($thumbs)]; @endphp
-                <article class="group min-w-0 overflow-hidden rounded-[24px] border border-white/10 bg-white/[.06] shadow-2xl shadow-black/30 backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:border-violet-300/40 hover:shadow-glow sm:rounded-[28px]">
+                <article class="group min-w-0 overflow-hidden rounded-[18px] border border-white/10 bg-white/[.06] shadow-2xl shadow-black/30 backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:border-violet-300/40 hover:shadow-glow sm:rounded-[28px]">
                     <button type="button" class="block w-full text-left" @click="preview = {{ json_encode($lesson) }}">
-                        <div class="relative aspect-[16/10] overflow-hidden">
+                        <div class="relative aspect-[4/3] overflow-hidden sm:aspect-[16/10]">
                             <img src="{{ $thumb }}" alt="{{ $lesson['title'] }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-110" draggable="false">
                             <div class="absolute inset-0 bg-gradient-to-t from-night via-night/30 to-transparent"></div>
-                            <div class="absolute left-4 top-4 rounded-2xl border border-white/20 bg-black/35 px-3 py-1 text-sm font-bold backdrop-blur-xl">{{ str_pad($lesson['position'], 2, '0', STR_PAD_LEFT) }}</div>
+                            <div class="absolute left-2 top-2 rounded-xl border border-white/20 bg-black/35 px-2 py-1 text-xs font-bold backdrop-blur-xl sm:left-4 sm:top-4 sm:rounded-2xl sm:px-3 sm:text-sm">{{ str_pad($lesson['position'], 2, '0', STR_PAD_LEFT) }}</div>
                             @if($lesson['locked'])
-                                <div class="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-2xl bg-black/45 backdrop-blur-xl"><i data-lucide="lock" class="h-5 w-5 text-white"></i></div>
+                                <div class="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-xl bg-black/45 backdrop-blur-xl sm:right-4 sm:top-4 sm:h-10 sm:w-10 sm:rounded-2xl"><i data-lucide="lock" class="h-4 w-4 text-white sm:h-5 sm:w-5"></i></div>
                             @endif
                         </div>
                     </button>
 
-                    <div class="min-w-0 p-4 sm:p-5">
-                        <div class="mb-3 flex flex-wrap items-center gap-2">
-                            <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold {{ $lesson['locked'] ? 'bg-rose-400/10 text-rose-100' : 'bg-emerald-400/10 text-emerald-100' }}">
-                                <span class="h-2 w-2 rounded-full {{ $lesson['locked'] ? 'bg-rose-300' : 'bg-emerald-300' }}"></span>
+                    <div class="min-w-0 p-3 sm:p-5">
+                        <div class="mb-2 flex flex-wrap items-center gap-1.5 sm:mb-3 sm:gap-2">
+                            <div class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold sm:gap-2 sm:px-3 sm:text-xs {{ $lesson['locked'] ? 'bg-rose-400/10 text-rose-100' : 'bg-emerald-400/10 text-emerald-100' }}">
+                                <span class="h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2 {{ $lesson['locked'] ? 'bg-rose-300' : 'bg-emerald-300' }}"></span>
                                 {{ $lesson['locked'] ? 'Đã khóa' : 'Đang chạy' }}
                             </div>
                             @if($lesson['trial'])
-                                <div class="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-100">
-                                    <i data-lucide="clock-3" class="h-3.5 w-3.5"></i>
+                                <div class="inline-flex items-center gap-1.5 rounded-full border border-amber-200/20 bg-amber-300/10 px-2 py-1 text-[10px] font-bold text-amber-100 sm:gap-2 sm:px-3 sm:text-xs">
+                                    <i data-lucide="clock-3" class="h-3 w-3 sm:h-3.5 sm:w-3.5"></i>
                                     Trải nghiệm
                                 </div>
                             @endif
                         </div>
 
-                        <h3 class="break-anywhere text-lg font-bold">{{ $lesson['title'] }}</h3>
-                        <p class="mt-2 text-sm text-slate-400">{{ $lesson['trial'] ? 'Trải nghiệm miễn phí' : 'Nội dung trả phí' }}</p>
+                        <h3 class="break-anywhere text-sm font-bold leading-5 sm:text-lg sm:leading-7">{{ $lesson['title'] }}</h3>
+                        <p class="mt-1 text-xs text-slate-400 sm:mt-2 sm:text-sm">{{ $lesson['trial'] ? 'Trải nghiệm miễn phí' : 'Nội dung trả phí' }}</p>
 
                         @if($lesson['expires_at'])
-                            <div x-data="{{ $lesson['trial'] ? "countdown('{$lesson['expires_at']}')" : "lessonCountdown('{$lesson['expires_at']}')" }}" class="mt-4 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 sm:px-4">
-                                <div class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <span class="text-xs font-semibold uppercase text-slate-400">{{ $lesson['trial'] ? 'Còn lại trial' : 'Còn lại active' }}</span>
+                            <div x-data="{{ $lesson['trial'] ? "countdown('{$lesson['expires_at']}')" : "lessonCountdown('{$lesson['expires_at']}')" }}" class="mt-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 sm:mt-4 sm:px-4">
+                                <div class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                                    <span class="text-[10px] font-semibold uppercase text-slate-400 sm:text-xs">{{ $lesson['trial'] ? 'Còn lại trial' : 'Còn lại active' }}</span>
                                     @if($lesson['trial'])
-                                        <span class="font-mono text-sm font-black text-amber-100" x-text="remaining"></span>
+                                        <span class="font-mono text-xs font-black text-amber-100 sm:text-sm" x-text="remaining"></span>
                                     @else
-                                        <span class="break-anywhere font-mono text-sm font-black text-amber-100"><span x-text="days"></span> ngày | <span x-text="time"></span></span>
+                                        <span class="break-anywhere font-mono text-xs font-black text-amber-100 sm:text-sm"><span x-text="days"></span> ngày | <span x-text="time"></span></span>
                                     @endif
                                 </div>
-                                <p class="mt-1 text-xs text-slate-500">Hết hạn: {{ $lesson['expires_label'] }}</p>
+                                <p class="mt-1 text-[10px] text-slate-500 sm:text-xs">Hết hạn: {{ $lesson['expires_label'] }}</p>
                             </div>
                         @endif
 
-                        <div class="mt-5 flex min-w-0 items-center justify-between gap-3">
+                        <div class="mt-3 flex min-w-0 items-center justify-between gap-2 sm:mt-5 sm:gap-3">
                             @if($lesson['trial'])
-                                <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-2xl border {{ $lesson['locked'] ? 'border-rose-300/20 bg-rose-400/10 text-rose-100' : 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' }} px-4 py-3 text-sm font-bold">
-                                    <span class="relative inline-flex h-6 w-11 items-center rounded-full {{ $lesson['locked'] ? 'bg-rose-400/25' : 'bg-emerald-400/30' }}">
-                                        <span class="{{ $lesson['locked'] ? 'ml-1 bg-rose-200' : 'ml-5 bg-emerald-200' }} h-5 w-5 rounded-full shadow-lg"></span>
+                                <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border {{ $lesson['locked'] ? 'border-rose-300/20 bg-rose-400/10 text-rose-100' : 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' }} px-3 py-3 text-xs font-bold sm:gap-3 sm:px-4 sm:text-sm">
+                                    <span class="relative inline-flex h-5 w-9 items-center rounded-full sm:h-6 sm:w-11 {{ $lesson['locked'] ? 'bg-rose-400/25' : 'bg-emerald-400/30' }}">
+                                        <span class="{{ $lesson['locked'] ? 'ml-1 bg-rose-200' : 'ml-4 sm:ml-5 bg-emerald-200' }} h-4 w-4 rounded-full shadow-lg sm:h-5 sm:w-5"></span>
                                     </span>
                                     {{ $lesson['locked'] ? 'Hết trial' : 'Active' }}
                                 </button>
                             @elseif($lesson['active'])
-                                <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
-                                    <span class="relative inline-flex h-6 w-11 items-center rounded-full bg-emerald-400/30">
-                                        <span class="ml-5 h-5 w-5 rounded-full bg-emerald-200 shadow-lg"></span>
+                                <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-3 text-xs font-bold text-emerald-100 sm:gap-3 sm:px-4 sm:text-sm">
+                                    <span class="relative inline-flex h-5 w-9 items-center rounded-full bg-emerald-400/30 sm:h-6 sm:w-11">
+                                        <span class="ml-4 h-4 w-4 rounded-full bg-emerald-200 shadow-lg sm:ml-5 sm:h-5 sm:w-5"></span>
                                     </span>
                                     Active
                                 </button>
                             @elseif($lesson['locked'] && ! $lesson['can_activate'])
-                                <a class="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 text-sm font-bold transition hover:shadow-glow" href="{{ route('billing') }}">
-                                    <i data-lucide="zap" class="h-4 w-4"></i> Mua khóa
+                                <a class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm" href="{{ route('billing') }}">
+                                    <i data-lucide="zap" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Mua khóa
                                 </a>
                             @else
                                 <form class="flex-1" method="post" action="{{ route('lessons.toggle', $lesson['id']) }}">
                                     @csrf
-                                    <button class="flex w-full items-center justify-center gap-3 rounded-2xl border {{ $lesson['active'] ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15' : 'border-slate-300/15 bg-white/5 text-slate-100 hover:bg-white/10' }} px-4 py-3 text-sm font-bold transition">
-                                        <span class="relative inline-flex h-6 w-11 items-center rounded-full {{ $lesson['active'] ? 'bg-emerald-400/30' : 'bg-slate-500/30' }}">
-                                            <span class="{{ $lesson['active'] ? 'ml-5 bg-emerald-200' : 'ml-1 bg-slate-300' }} h-5 w-5 rounded-full shadow-lg"></span>
+                                    <button class="flex w-full items-center justify-center gap-2 rounded-2xl border {{ $lesson['active'] ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15' : 'border-slate-300/15 bg-white/5 text-slate-100 hover:bg-white/10' }} px-3 py-3 text-xs font-bold transition sm:gap-3 sm:px-4 sm:text-sm">
+                                        <span class="relative inline-flex h-5 w-9 items-center rounded-full sm:h-6 sm:w-11 {{ $lesson['active'] ? 'bg-emerald-400/30' : 'bg-slate-500/30' }}">
+                                            <span class="{{ $lesson['active'] ? 'ml-4 sm:ml-5 bg-emerald-200' : 'ml-1 bg-slate-300' }} h-4 w-4 rounded-full shadow-lg sm:h-5 sm:w-5"></span>
                                         </span>
                                         {{ $lesson['active'] ? 'Active' : 'Bật active' }}
                                     </button>
