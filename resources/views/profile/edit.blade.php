@@ -109,8 +109,9 @@
             </div>
         </form>
 
-        <div x-show="confirmBank" x-cloak x-transition.opacity class="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-xl" @click.self="confirmBank = false">
-            <div x-transition.scale class="glass w-full max-w-lg rounded-[32px] p-6">
+        <template x-teleport="body">
+        <div x-show="confirmBank" x-cloak x-transition.opacity class="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/80 px-4 py-6 backdrop-blur-xl sm:items-center" @click.self="confirmBank = false">
+            <div x-transition.scale class="glass w-full max-w-lg rounded-[28px] p-5 sm:rounded-[32px] sm:p-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/80">Xác nhận ngân hàng</p>
@@ -150,6 +151,7 @@
                 </div>
             </div>
         </div>
+        </template>
     </section>
 </div>
 @endsection

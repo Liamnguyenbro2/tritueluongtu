@@ -36,21 +36,22 @@
                 <input class="premium-input" name="account_holder" placeholder="Chủ tài khoản" x-model="accountHolder" value="{{ old('account_holder', $bankAccount?->account_holder) }}" required @disabled($bankAccount && ! $bankAccount->can_edit)>
                 <div class="sm:col-span-3">
                     @if($bankAccount && ! $bankAccount->can_edit)
-                        <p class="text-sm text-slate-400">Thông tin ngân hàng đã được lưu. Nếu cần sửa, admin có thể mở khóa chỉnh sửa cho tài khoản.</p>
+                        <p class="text-sm text-slate-400">Thông tin ngân hàng đã được lưu. Bạn không có quyền chỉnh sửa thông tin tài khoản</p>
                     @else
                         <button class="w-full rounded-2xl border border-white/10 bg-white/10 px-5 py-4 font-bold transition hover:bg-white/15">Lưu tài khoản ngân hàng</button>
                     @endif
                 </div>
             </form>
 
-            <div x-show="confirmBank" x-cloak x-transition.opacity class="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-xl" @click.self="confirmBank = false">
-                <div x-transition.scale class="glass w-full max-w-lg rounded-[32px] p-6">
+            <template x-teleport="body">
+                <div x-show="confirmBank" x-cloak x-transition.opacity class="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/80 px-4 py-6 backdrop-blur-xl sm:items-center" @click.self="confirmBank = false">
+                    <div x-transition.scale class="glass w-full max-w-lg rounded-[28px] p-5 sm:rounded-[32px] sm:p-6">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/80">Xác nhận ngân hàng</p>
                             <h3 class="mt-2 text-2xl font-black">Kiểm tra lại thông tin</h3>
                         </div>
-                        <button type="button" class="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="confirmBank = false">
+                        <button type="button" class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="confirmBank = false">
                             <i data-lucide="x" class="h-5 w-5"></i>
                         </button>
                     </div>
@@ -84,6 +85,7 @@
                     </div>
                 </div>
             </div>
+            </template>
         </div>
     </section>
 
