@@ -27,11 +27,11 @@
                 <p class="text-sm text-slate-300">Xin chào,</p>
                 <h1 class="break-anywhere mt-1 text-3xl font-black tracking-tight text-white sm:text-6xl">{{ auth()->user()->name }}</h1>
                 <p class="mt-5 max-w-2xl text-base leading-8 text-slate-300">Thư viện nội dung với trial 48 giờ và các khóa trả phí cần bật Active trong 7 ngày trước khi học.</p>
-                <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <a href="{{ route('billing') }}" class="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-bold text-white shadow-glow transition hover:-translate-y-1 hover:shadow-[0_0_56px_rgba(139,92,246,.55)] sm:w-auto">
+                <div class="mt-7 flex min-w-0 flex-row gap-3 sm:flex-wrap">
+                    <a href="{{ route('billing') }}" class="group inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold text-white shadow-glow transition hover:-translate-y-1 hover:shadow-[0_0_56px_rgba(139,92,246,.55)] sm:flex-none sm:gap-2 sm:px-5 sm:text-sm">
                         <i data-lucide="crown" class="h-5 w-5"></i> Nâng cấp trải nghiệm
                     </a>
-                    <a href="{{ route('wallet') }}" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-1 hover:bg-white/15 sm:w-auto">
+                    <a href="{{ route('wallet') }}" class="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 text-xs font-semibold text-white transition hover:-translate-y-1 hover:bg-white/15 sm:flex-none sm:gap-2 sm:px-5 sm:text-sm">
                         <i data-lucide="wallet" class="h-5 w-5"></i> Ví số dư
                     </a>
                 </div>
@@ -72,7 +72,7 @@
         </div>
     </section>
 
-    <section class="grid min-w-0 gap-4 md:grid-cols-3">
+    <section class="grid min-w-0 grid-cols-2 gap-4 md:grid-cols-3">
         <div class="glass min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Đang mở</p>
@@ -87,7 +87,7 @@
             </div>
             <p class="mt-3 text-4xl font-black">{{ $locked }}</p>
         </div>
-        <div class="glass min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5" x-data="{ copied: false, link: '{{ url('/register?ref='.auth()->user()->referralLink?->code) }}' }">
+        <div class="glass col-span-2 min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5 md:col-span-1" x-data="{ copied: false, link: '{{ url('/register?ref='.auth()->user()->referralLink?->code) }}' }">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Referral link</p>
                 <i data-lucide="link" class="h-5 w-5 text-violet-300"></i>

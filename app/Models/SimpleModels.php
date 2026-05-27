@@ -92,6 +92,14 @@ class Lesson extends Model
 class Plan extends Model
 {
     protected $fillable = ['code', 'name', 'duration_days', 'price_vnd'];
+
+    protected function casts(): array
+    {
+        return [
+            'duration_days' => 'integer',
+            'price_vnd' => 'integer',
+        ];
+    }
 }
 
 class Subscription extends Model

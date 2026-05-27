@@ -70,7 +70,7 @@ class PaymentProcessor
                 ->where('ends_at', '>', $now)
                 ->max('ends_at');
             $extensionBase = $currentEndsAt ? Carbon::parse($currentEndsAt) : $now;
-            $subscriptionEndsAt = $extensionBase->copy()->addDays($plan->duration_days);
+            $subscriptionEndsAt = $extensionBase->copy()->addDays((int) $plan->duration_days);
 
             Subscription::query()->create([
                 'user_id' => $user->id,
