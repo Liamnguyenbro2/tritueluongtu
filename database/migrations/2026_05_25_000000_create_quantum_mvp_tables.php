@@ -127,10 +127,12 @@ return new class extends Migration
 
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
-            $table->nullableMorphs('owner');
-            $table->string('type');
+            $table->string('owner_type', 120)->nullable();
+            $table->unsignedBigInteger('owner_id')->nullable();
+            $table->string('type', 50);
             $table->unsignedBigInteger('balance_vnd')->default(0);
             $table->timestamps();
+            $table->index(['owner_type', 'owner_id']);
             $table->unique(['owner_type', 'owner_id', 'type']);
         });
 
@@ -140,9 +142,11 @@ return new class extends Migration
             $table->bigInteger('amount_vnd');
             $table->string('direction');
             $table->string('type');
-            $table->nullableMorphs('reference');
+            $table->string('reference_type', 120)->nullable();
+            $table->unsignedBigInteger('reference_id')->nullable();
             $table->text('memo')->nullable();
             $table->timestamps();
+            $table->index(['reference_type', 'reference_id']);
         });
 
         Schema::create('withdrawal_requests', function (Blueprint $table) {

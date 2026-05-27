@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Plan;
 use App\Models\ReferralLink;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\WalletLedgerService;
 use Illuminate\Database\Seeder;
@@ -44,7 +45,7 @@ class DatabaseSeeder extends Seeder
                 'accepted_terms_at' => now(),
             ]);
 
-            ReferralLink::query()->firstOrCreate(
+            ReferralLink::query()->updateOrCreate(
                 ['user_id' => $account->id],
                 ['code' => strtoupper($account->username)]
             );
@@ -100,6 +101,10 @@ class DatabaseSeeder extends Seeder
         }
 
         app(WalletLedgerService::class)->ensureSystemWallets();
+        app(WalletLedgerService::class)->walletForUser($admin);
         app(WalletLedgerService::class)->walletForUser($user);
+
+        SiteSetting::query()->updateOrCreate(['key' => 'brand_eyebrow'], ['value' => 'Nội dung demo']);
+        SiteSetting::query()->updateOrCreate(['key' => 'brand_name'], ['value' => 'Demo']);
     }
 }
