@@ -1,0 +1,47 @@
+@extends('layouts.app')
+
+@section('content')
+@php
+    $method = data_get($order->metadata, 'payment_method', 'bank_qr');
+    $methodLabel = $method === 'wallet' ? 'Ví số dư' : 'QR ngân hàng';
+    $statusLabel = $order->status === 'paid' ? 'Đã thanh toán' : 'Đang chờ';
+@endphp
+
+<section class="mx-auto max-w-3xl">
+    <div class="glass rounded-[32px] p-6 sm:p-8">
+        <div class="flex items-start justify-between gap-6">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[.24em] text-violet-200/70">Payment order</p>
+                <h1 class="mt-3 text-4xl font-black">{{ $order->code }}</h1>
+            </div>
+            <div class="rounded-2xl px-4 py-2 text-sm font-bold {{ $order->status === 'paid' ? 'bg-emerald-400/10 text-emerald-100' : 'bg-amber-300/10 text-amber-100' }}">{{ $statusLabel }}</div>
+        </div>
+
+        <div class="mt-8 grid gap-5 sm:grid-cols-2">
+            <div class="rounded-[24px] border border-white/10 bg-black/20 p-5">
+                <p class="text-sm text-slate-400">Số tiền</p>
+                <p class="mt-2 text-3xl font-black">{{ number_format($order->amount_vnd, 0, ',', '.') }} đ</p>
+            </div>
+            <div class="rounded-[24px] border border-white/10 bg-black/20 p-5">
+                <p class="text-sm text-slate-400">Phương thức</p>
+                <p class="mt-2 text-2xl font-black">{{ $methodLabel }}</p>
+            </div>
+            <div class="rounded-[24px] border border-white/10 bg-black/20 p-5">
+                <p class="text-sm text-slate-400">Gói</p>
+                <p class="mt-2 text-xl font-bold">{{ $order->plan?->name }}</p>
+            </div>
+            <div class="rounded-[24px] border border-white/10 bg-black/20 p-5">
+                <p class="text-sm text-slate-400">Thanh toán lúc</p>
+                <p class="mt-2 text-xl font-bold">{{ $order->paid_at?->format('d/m/Y H:i') ?? 'Chưa thanh toán' }}</p>
+            </div>
+        </div>
+
+        @if($method === 'bank_qr')
+            <div class="mt-6 rounded-[24px] border border-white/10 bg-black/20 p-5">
+                <p class="text-sm text-slate-400">QR metadata</p>
+                <pre class="mt-3 overflow-x-auto rounded-2xl bg-black/40 p-4 text-xs text-violet-100">{{ json_encode($order->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+            </div>
+        @endif
+    </div>
+</section>
+@endsection

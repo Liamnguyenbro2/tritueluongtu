@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ config('app.name', 'Năng Lượng Tích Cực') }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        night: '#060711',
+                        ink: '#0c1020',
+                        violetNeon: '#8b5cf6',
+                        gold: '#f8c84e'
+                    },
+                    boxShadow: {
+                        glow: '0 0 40px rgba(139,92,246,.34)',
+                        gold: '0 0 34px rgba(248,200,78,.28)'
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            background:
+                radial-gradient(circle at 18% 8%, rgba(124,58,237,.28), transparent 28%),
+                radial-gradient(circle at 82% 14%, rgba(248,200,78,.16), transparent 24%),
+                radial-gradient(circle at 50% 100%, rgba(14,165,233,.12), transparent 32%),
+                #060711;
+        }
+        .glass {
+            background: linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+            border: 1px solid rgba(255,255,255,.12);
+            box-shadow: 0 24px 80px rgba(0,0,0,.35);
+            backdrop-filter: blur(24px);
+        }
+        .premium-input {
+            width: 100%;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,.12);
+            background: rgba(6,7,17,.72);
+            padding: 13px 15px;
+            color: white;
+            outline: none;
+            transition: .2s ease;
+        }
+        .premium-input:focus {
+            border-color: rgba(139,92,246,.8);
+            box-shadow: 0 0 0 4px rgba(139,92,246,.16);
+        }
+        body, img, video, a, button, p, h1, h2, h3, h4, h5, h6, span, div, table {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        input, textarea, select {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        img, video {
+            -webkit-user-drag: none;
+        }
+        @media print {
+            body * { visibility: hidden !important; }
+            body::before {
+                content: "Nội dung được bảo vệ.";
+                visibility: visible !important;
+                display: grid;
+                min-height: 100vh;
+                place-items: center;
+                color: #111;
+                background: #fff;
+                font: 700 24px Arial, sans-serif;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen overflow-x-hidden bg-night text-white antialiased" x-data="{ sidebarOpen: false, notificationsOpen: false }" x-init="$nextTick(() => lucide.createIcons())">
+<div class="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
+
+<div x-show="sidebarOpen" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" @click="sidebarOpen = false"></div>
+
+<aside class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-white/10 bg-[#070815]/90 px-5 py-6 shadow-2xl shadow-black/40 backdrop-blur-2xl transition duration-300 lg:translate-x-0" :class="{ 'translate-x-0': sidebarOpen }">
+    <div class="flex items-center gap-3 px-2">
+        @if(!empty($brandSettings['logo_url']))
+            <img src="{{ $brandSettings['logo_url'] }}" alt="{{ $brandSettings['name'] }}" class="h-12 w-12 rounded-2xl object-cover shadow-glow">
+        @else
+            <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-300 via-fuchsia-400 to-violet-600 shadow-glow">
+                <i data-lucide="sparkles" class="h-6 w-6 text-white"></i>
+            </div>
+        @endif
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[.28em] text-amber-200/80">{{ $brandSettings['eyebrow'] }}</p>
+            <h1 class="text-lg font-bold">{{ $brandSettings['name'] }}</h1>
+        </div>
+    </div>
+
+    <nav class="mt-9 space-y-2">
+        @auth
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('dashboard') }}">
+                <i data-lucide="layout-dashboard" class="h-5 w-5 text-violet-300"></i><span>Dashboard</span>
+            </a>
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('billing') }}">
+                <i data-lucide="crown" class="h-5 w-5 text-amber-300"></i><span>Nâng cấp</span>
+            </a>
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('affiliate.index') }}">
+                <i data-lucide="users-round" class="h-5 w-5 text-fuchsia-300"></i><span>Thành viên</span>
+            </a>
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('wallet') }}">
+                <i data-lucide="wallet" class="h-5 w-5 text-emerald-300"></i><span>Ví số dư</span>
+            </a>
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('profile.edit') }}">
+                <i data-lucide="user-round-cog" class="h-5 w-5 text-violet-300"></i><span>Hồ sơ</span>
+            </a>
+            @if(auth()->user()->is_admin)
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.index') }}">
+                    <i data-lucide="shield-check" class="h-5 w-5 text-sky-300"></i><span>Admin Console</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.lessons.index') }}">
+                    <i data-lucide="folder-pen" class="h-5 w-5 text-amber-300"></i><span>Nội dung học</span>
+                </a>
+            @endif
+        @else
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('landing') }}">
+                <i data-lucide="orbit" class="h-5 w-5 text-violet-300"></i><span>Trang chủ</span>
+            </a>
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('login') }}">
+                <i data-lucide="log-in" class="h-5 w-5 text-violet-300"></i><span>Đăng nhập</span>
+            </a>
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('register') }}">
+                <i data-lucide="user-plus" class="h-5 w-5 text-amber-300"></i><span>Đăng ký</span>
+            </a>
+        @endauth
+    </nav>
+
+    @auth
+        <div class="absolute bottom-5 left-5 right-5 rounded-[24px] border border-violet-400/20 bg-violet-500/10 p-4 shadow-glow">
+            <a href="{{ route('profile.edit') }}" class="mb-3 flex items-center gap-3 rounded-2xl p-2 transition hover:bg-white/10">
+                <div class="h-10 w-10 rounded-2xl bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=160&q=80')"></div>
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-semibold">{{ auth()->user()->name }}</p>
+                    <p class="truncate text-xs text-slate-400">{{ auth()->user()->email }}</p>
+                </div>
+            </a>
+            <form method="post" action="{{ route('logout') }}">
+                @csrf
+                <button class="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/15">
+                    <i data-lucide="log-out" class="h-4 w-4"></i> Đăng xuất
+                </button>
+            </form>
+        </div>
+    @endauth
+</aside>
+
+<div class="relative z-10 min-h-screen lg:pl-72">
+    <header class="sticky top-0 z-30 border-b border-white/10 bg-night/65 backdrop-blur-2xl">
+        <div class="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-10">
+            <button class="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 lg:hidden" @click="sidebarOpen = true">
+                <i data-lucide="menu" class="h-5 w-5"></i>
+            </button>
+            <div class="hidden sm:block">
+                <p class="text-xs uppercase tracking-[.32em] text-violet-200/70">Premium Quantum Intelligence</p>
+                <p class="mt-1 text-sm text-slate-400">Luxury dashboard experience</p>
+            </div>
+            <div class="flex items-center gap-3">
+                @auth
+                    <div class="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-right sm:block">
+                        <p class="text-xs text-slate-400">Số dư</p>
+                        <p class="font-semibold">{{ number_format(auth()->user()->wallet?->balance_vnd ?? 0, 0, ',', '.') }} đ</p>
+                    </div>
+                @endauth
+                @auth
+                    <div class="relative" @click.outside="notificationsOpen = false">
+                        <button type="button" class="relative grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 transition hover:bg-white/10" @click="notificationsOpen = !notificationsOpen">
+                            <i data-lucide="bell" class="h-5 w-5 text-amber-200"></i>
+                            @if(($headerUnreadNotificationCount ?? 0) > 0)
+                                <span class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-violet-500 px-1 text-[10px] font-black text-white shadow-glow">{{ $headerUnreadNotificationCount }}</span>
+                            @endif
+                        </button>
+
+                        <div x-show="notificationsOpen" x-cloak x-transition.opacity class="absolute right-0 mt-3 w-[min(92vw,420px)] overflow-hidden rounded-[28px] border border-white/10 bg-[#090a14]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+                            <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[.22em] text-violet-200/70">Notifications</p>
+                                    <h3 class="mt-1 text-lg font-black">Thông báo gần đây</h3>
+                                </div>
+                                <i data-lucide="bell-ring" class="h-5 w-5 text-amber-200"></i>
+                            </div>
+
+                            <div class="max-h-[480px] overflow-y-auto p-2">
+                                @forelse(($headerNotifications ?? collect()) as $item)
+                                    <div class="flex gap-3 rounded-[22px] px-3 py-3 transition hover:bg-white/[.05]">
+                                        <div class="mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-2xl
+                                            {{ $item['tone'] === 'emerald' ? 'bg-emerald-400/10 text-emerald-200' : '' }}
+                                            {{ $item['tone'] === 'rose' ? 'bg-rose-400/10 text-rose-200' : '' }}
+                                            {{ $item['tone'] === 'fuchsia' ? 'bg-fuchsia-400/10 text-fuchsia-200' : '' }}
+                                            {{ $item['tone'] === 'violet' ? 'bg-violet-400/10 text-violet-200' : '' }}">
+                                            <i data-lucide="{{ $item['icon'] }}" class="h-5 w-5"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <p class="font-semibold text-white">{{ $item['title'] }}</p>
+                                                <span class="shrink-0 text-xs text-slate-500">{{ $item['time']->diffForHumans() }}</span>
+                                            </div>
+                                            <p class="mt-1 text-sm leading-6 text-slate-400">{{ $item['body'] }}</p>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="px-5 py-10 text-center text-sm text-slate-400">Chưa có thông báo mới.</div>
+                                @endforelse
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 border-t border-white/10 px-5 py-3">
+                                <p class="text-xs text-slate-500">Hiển thị tối đa 5 thông báo gần nhất.</p>
+                                <form method="post" action="{{ route('notifications.read-all') }}">
+                                    @csrf
+                                    <button class="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold text-violet-100 transition hover:bg-violet-400/20">
+                                        Đã đọc tất cả
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5">
+                        <i data-lucide="bell" class="h-5 w-5 text-amber-200"></i>
+                    </div>
+                @endauth
+            </div>
+        </div>
+    </header>
+
+    <main class="px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+        @if(session('status'))
+            <div class="mb-6 flex items-center gap-3 rounded-[24px] border border-emerald-300/20 bg-emerald-400/10 px-5 py-4 text-emerald-100 shadow-lg shadow-emerald-950/30">
+                <i data-lucide="check-circle-2" class="h-5 w-5"></i>{{ session('status') }}
+            </div>
+        @endif
+        @if($errors->any())
+            <div class="mb-6 flex items-center gap-3 rounded-[24px] border border-rose-300/20 bg-rose-500/10 px-5 py-4 text-rose-100 shadow-lg shadow-rose-950/30">
+                <i data-lucide="alert-triangle" class="h-5 w-5"></i>{{ $errors->first() }}
+            </div>
+        @endif
+        @yield('content')
+    </main>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('countdown', (target) => ({
+            target: target ? new Date(target).getTime() : null,
+            remaining: '00:00:00',
+            init() {
+                this.tick();
+                setInterval(() => this.tick(), 1000);
+            },
+            tick() {
+                if (!this.target) return;
+                const distance = Math.max(0, this.target - Date.now());
+                const h = String(Math.floor(distance / 3600000)).padStart(2, '0');
+                const m = String(Math.floor((distance % 3600000) / 60000)).padStart(2, '0');
+                const s = String(Math.floor((distance % 60000) / 1000)).padStart(2, '0');
+                this.remaining = `${h}:${m}:${s}`;
+            }
+        }));
+        Alpine.data('subscriptionCountdown', (target) => ({
+            target: target ? new Date(target).getTime() : null,
+            days: '0',
+            time: '00:00:00',
+            init() {
+                this.tick();
+                setInterval(() => this.tick(), 1000);
+            },
+            tick() {
+                if (!this.target) return;
+                const distance = Math.max(0, this.target - Date.now());
+                this.days = String(Math.floor(distance / 86400000));
+                const h = String(Math.floor((distance % 86400000) / 3600000)).padStart(2, '0');
+                const m = String(Math.floor((distance % 3600000) / 60000)).padStart(2, '0');
+                const s = String(Math.floor((distance % 60000) / 1000)).padStart(2, '0');
+                this.time = `${h}:${m}:${s}`;
+            }
+        }));
+        Alpine.data('lessonCountdown', (target) => ({
+            target: target ? new Date(target).getTime() : null,
+            days: '0',
+            time: '00:00:00',
+            expired: false,
+            init() {
+                this.tick();
+                setInterval(() => this.tick(), 1000);
+            },
+            tick() {
+                if (!this.target) return;
+                const distance = Math.max(0, this.target - Date.now());
+                this.days = String(Math.floor(distance / 86400000));
+                const h = String(Math.floor((distance % 86400000) / 3600000)).padStart(2, '0');
+                const m = String(Math.floor((distance % 3600000) / 60000)).padStart(2, '0');
+                const s = String(Math.floor((distance % 60000) / 1000)).padStart(2, '0');
+                this.time = `${h}:${m}:${s}`;
+
+                if (distance === 0 && !this.expired) {
+                    this.expired = true;
+                    setTimeout(() => window.location.reload(), 700);
+                }
+            }
+        }));
+    });
+    window.addEventListener('load', () => lucide.createIcons());
+
+    (() => {
+        const isEditable = (target) => {
+            const element = target instanceof Element ? target : null;
+            return element?.closest('input, textarea, select, [contenteditable="true"]');
+        };
+
+        document.addEventListener('contextmenu', (event) => event.preventDefault(), true);
+        document.addEventListener('dragstart', (event) => event.preventDefault(), true);
+        document.addEventListener('copy', (event) => {
+            event.preventDefault();
+            event.clipboardData?.setData('text/plain', '');
+        }, true);
+        document.addEventListener('cut', (event) => event.preventDefault(), true);
+        document.addEventListener('selectstart', (event) => {
+            if (!isEditable(event.target)) {
+                event.preventDefault();
+            }
+        }, true);
+        document.addEventListener('keydown', async (event) => {
+            const key = event.key.toLowerCase();
+            const blocked =
+                event.key === 'F12' ||
+                (event.ctrlKey && event.shiftKey && ['i', 'j', 'c'].includes(key)) ||
+                (event.ctrlKey && ['u', 's', 'p'].includes(key)) ||
+                key === 'printscreen';
+
+            if (blocked) {
+                event.preventDefault();
+                event.stopPropagation();
+                try {
+                    await navigator.clipboard?.writeText('');
+                } catch (error) {
+                    // Clipboard access is browser-controlled; ignore when unavailable.
+                }
+            }
+        }, true);
+    })();
+</script>
+</body>
+</html>
