@@ -88,6 +88,30 @@
             overflow-wrap: anywhere;
             word-break: break-word;
         }
+        .header-marquee {
+            overflow: hidden;
+            min-width: 0;
+        }
+        .header-marquee__track {
+            display: inline-flex;
+            width: max-content;
+            white-space: nowrap;
+            will-change: transform;
+            animation: header-marquee-ltr 25s linear infinite;
+        }
+        .header-marquee__item {
+            flex: 0 0 auto;
+        }
+        @keyframes header-marquee-ltr {
+            from { transform: translateX(-50%); }
+            to { transform: translateX(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .header-marquee__track {
+                animation: none;
+                transform: none;
+            }
+        }
         @media (max-width: 640px) {
             .glass {
                 box-shadow: 0 18px 50px rgba(0,0,0,.32);
@@ -199,9 +223,13 @@
             <button class="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 lg:hidden" @click="sidebarOpen = true">
                 <i data-lucide="menu" class="h-5 w-5"></i>
             </button>
-            <div class="hidden sm:block">
-                <p class="text-xs uppercase tracking-[.32em] text-violet-200/70">Premium Quantum Intelligence</p>
-                <p class="mt-1 text-sm text-slate-400">Luxury dashboard experience</p>
+            <div class="header-marquee hidden min-w-0 flex-1 px-6 sm:flex sm:items-center">
+                <div class="w-full">
+                    <div class="header-marquee__track text-sm font-medium text-slate-300 sm:text-[15px]">
+                        <span class="header-marquee__item pr-16">Hệ thống sử dụng trải nghiệm hình ảnh và âm thanh mô phỏng trạng thái: Alpha, Theta, Deep Relaxation, Focus State.</span>
+                        <span class="header-marquee__item pr-16" aria-hidden="true">Hệ thống sử dụng trải nghiệm hình ảnh và âm thanh mô phỏng trạng thái: Alpha, Theta, Deep Relaxation, Focus State.</span>
+                    </div>
+                </div>
             </div>
             <div class="flex items-center gap-3">
                 @auth

@@ -23,29 +23,29 @@
         </div>
     </section>
 
-    <section class="grid gap-5 md:grid-cols-4">
-        <article class="glass rounded-[28px] p-5 transition hover:-translate-y-1 hover:shadow-glow">
+    <section class="grid min-w-0 grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+        <article class="glass min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Tổng đã mời</p>
                 <i data-lucide="user-plus" class="h-5 w-5 text-violet-200"></i>
             </div>
             <p class="mt-3 text-4xl font-black">{{ $totalInvited }}</p>
         </article>
-        <article class="glass rounded-[28px] p-5 transition hover:-translate-y-1 hover:shadow-glow">
+        <article class="glass min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Đã kích hoạt</p>
                 <i data-lucide="badge-check" class="h-5 w-5 text-emerald-200"></i>
             </div>
             <p class="mt-3 text-4xl font-black">{{ $totalActivated }}</p>
         </article>
-        <article class="glass rounded-[28px] p-5 transition hover:-translate-y-1 hover:shadow-glow">
+        <article class="glass min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Theo bộ lọc</p>
                 <i data-lucide="filter" class="h-5 w-5 text-amber-200"></i>
             </div>
             <p class="mt-3 text-4xl font-black">{{ $filteredTotal }}</p>
         </article>
-        <article class="glass rounded-[28px] p-5 transition hover:-translate-y-1 hover:shadow-glow">
+        <article class="glass min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Active theo lọc</p>
                 <i data-lucide="activity" class="h-5 w-5 text-fuchsia-200"></i>
