@@ -24,6 +24,19 @@
     </section>
 
     <section class="glass rounded-[32px] p-6">
+        <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/70">Notification Center</p>
+                <h2 class="mt-2 text-2xl font-black">Thông báo dashboard</h2>
+                <p class="mt-1 text-sm text-slate-400">Tạo thông báo cố định và thông báo theo đợt để user đọc, xác nhận và lưu lại lịch sử.</p>
+            </div>
+            <a href="{{ route('admin.notifications.index') }}" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-300 to-violet-500 px-5 py-4 font-black text-white shadow-glow transition hover:-translate-y-1">
+                <i data-lucide="megaphone" class="h-5 w-5"></i> Quản lý thông báo
+            </a>
+        </div>
+    </section>
+
+    <section class="glass rounded-[32px] p-6">
         <div class="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
             <div>
                 <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/70">Branding</p>

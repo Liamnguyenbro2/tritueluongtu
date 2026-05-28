@@ -67,6 +67,11 @@ class User extends Authenticatable
         return $this->hasMany(UserLessonAccess::class);
     }
 
+    public function announcementReads()
+    {
+        return $this->hasMany(AnnouncementRead::class);
+    }
+
     public function wallet()
     {
         return $this->morphOne(Wallet::class, 'owner')->where('type', 'user');

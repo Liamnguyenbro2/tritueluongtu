@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\BankAccount;
+use App\Models\Announcement;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletLedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -97,6 +99,137 @@ class AdminWalletTransferTest extends TestCase
         Storage::disk('public')->assertExists($storedPath);
         $this->assertSame('ZEN FILE', SiteSetting::getValue('brand_eyebrow'));
         $this->assertSame('Energy File', SiteSetting::getValue('brand_name'));
+    }
+
+    public function test_admin_can_search_and_change_user_password(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('admin.passwords', ['q' => $user->username]))
+            ->assertOk()
+            ->assertSee('Đổi pass user')
+            ->assertSee($user->email)
+            ->assertSee($user->phone);
+
+        $this->actingAs($admin)
+            ->get(route('admin.passwords', ['q' => $user->phone]))
+            ->assertOk()
+            ->assertSee($user->username);
+
+        $this->actingAs($admin)
+            ->post(route('admin.passwords.update'), [
+                'user_id' => $user->id,
+                'password' => 'new-user-pass',
+                'password_confirmation' => 'new-user-pass',
+            ])
+            ->assertRedirect(route('admin.passwords', ['q' => $user->email]));
+
+        $this->assertTrue(Hash::check('new-user-pass', $user->fresh()->password));
+
+        $this->post(route('logout'));
+
+        $this->post('/login', [
+            'login' => $user->email,
+            'password' => 'new-user-pass',
+        ])->assertRedirect(route('dashboard'));
+    }
+
+    public function test_admin_can_manage_notifications(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('admin.notifications.index'))
+            ->assertOk()
+            ->assertSee('Thông báo cố định')
+            ->assertSee('Thông báo theo đợt');
+
+        $this->actingAs($admin)
+            ->put(route('admin.notifications.fixed.update'), [
+                'title' => 'Thông báo nghiên cứu',
+                'body' => 'Nội dung cố định đã cập nhật.',
+                'image_url' => 'https://example.com/fixed.png',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('announcements', [
+            'slug' => Announcement::FIXED_SLUG,
+            'type' => Announcement::TYPE_FIXED,
+            'title' => 'Thông báo nghiên cứu',
+            'body' => 'Nội dung cố định đã cập nhật.',
+            'image_url' => 'https://example.com/fixed.png',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.notifications.campaigns.store'), [
+                'title' => 'Thông báo theo đợt tháng 5',
+                'body' => 'Nội dung gửi tới toàn bộ user.',
+                'image_url' => 'https://example.com/campaign.png',
+                'is_active' => '1',
+            ])
+            ->assertRedirect();
+
+        $campaign = Announcement::query()
+            ->where('type', Announcement::TYPE_CAMPAIGN)
+            ->where('title', 'Thông báo theo đợt tháng 5')
+            ->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.notifications.toggle', $campaign))
+            ->assertRedirect();
+
+        $this->assertFalse($campaign->fresh()->is_active);
+    }
+
+    public function test_user_sees_announcement_popup_history_and_can_mark_read(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $campaign = Announcement::query()->create([
+            'type' => Announcement::TYPE_CAMPAIGN,
+            'title' => 'Thông báo sự kiện mới',
+            'body' => 'User cần đọc và xác nhận thông báo này.',
+            'image_url' => 'https://example.com/event.png',
+            'is_active' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Xác nhận đã đọc')
+            ->assertDontSee('Số thông báo');
+
+        $this->actingAs($user)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Thông báo gần đây')
+            ->assertSee('User cần đọc và xác nhận thông báo này.')
+            ->assertSee('Chưa đọc')
+            ->assertSee('Xác nhận đã đọc');
+
+        $this->actingAs($user)
+            ->post(route('announcements.read', $campaign))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('announcement_reads', [
+            'announcement_id' => $campaign->id,
+            'user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Đã đọc')
+            ->assertSee('Xem chi tiết');
     }
 
     public function test_admin_withdrawal_table_shows_account_id_and_email(): void

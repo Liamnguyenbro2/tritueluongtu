@@ -146,7 +146,7 @@
 <div x-show="sidebarOpen" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" @click="sidebarOpen = false"></div>
 
 <aside class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-white/10 bg-[#070815]/90 px-5 py-6 shadow-2xl shadow-black/40 backdrop-blur-2xl transition duration-300 lg:translate-x-0" :class="{ 'translate-x-0': sidebarOpen }">
-    <div class="flex items-center gap-3 px-2">
+    <a href="{{ auth()->check() ? route('dashboard') : route('landing') }}" class="flex items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-white/10">
         @if(!empty($brandSettings['logo_url']))
             <img src="{{ $brandSettings['logo_url'] }}" alt="{{ $brandSettings['name'] }}" class="h-12 w-12 rounded-2xl object-cover shadow-glow">
         @else
@@ -158,13 +158,18 @@
             <p class="text-xs font-semibold uppercase tracking-[.28em] text-amber-200/80">{{ $brandSettings['eyebrow'] }}</p>
             <h1 class="text-lg font-bold">{{ $brandSettings['name'] }}</h1>
         </div>
-    </div>
+    </a>
 
     <nav class="mt-9 space-y-2">
         @auth
             <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('dashboard') }}">
                 <i data-lucide="layout-dashboard" class="h-5 w-5 text-violet-300"></i><span>Dashboard</span>
             </a>
+            @unless(auth()->user()->is_admin)
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('notifications.index') }}">
+                    <i data-lucide="bell-ring" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
+                </a>
+            @endunless
             <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('billing') }}">
                 <i data-lucide="crown" class="h-5 w-5 text-amber-300"></i><span>Nâng cấp</span>
             </a>
@@ -180,6 +185,12 @@
             @if(auth()->user()->is_admin)
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.index') }}">
                     <i data-lucide="shield-check" class="h-5 w-5 text-sky-300"></i><span>Admin Console</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.passwords') }}">
+                    <i data-lucide="key-round" class="h-5 w-5 text-emerald-300"></i><span>Đổi pass user</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.notifications.index') }}">
+                    <i data-lucide="megaphone" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
                 </a>
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.lessons.index') }}">
                     <i data-lucide="folder-pen" class="h-5 w-5 text-amber-300"></i><span>Nội dung học</span>

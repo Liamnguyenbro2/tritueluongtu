@@ -16,7 +16,37 @@
     $locked = $lessons->where('locked', true)->count();
 @endphp
 
-<div x-data="{ preview: null }" class="max-w-full overflow-x-hidden space-y-6 sm:space-y-8">
+<div x-data="{ preview: null, forcedAnnouncement: {{ \Illuminate\Support\Js::from(($pendingAnnouncements ?? collect())->first()) }} }" class="max-w-full overflow-x-hidden space-y-6 sm:space-y-8">
+    <div x-show="forcedAnnouncement" x-cloak x-transition.opacity class="fixed inset-0 z-[100] grid place-items-center bg-black/80 p-4 backdrop-blur-xl" @click.self="forcedAnnouncement = null">
+        <div x-transition.scale class="glass max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[24px] p-4 sm:rounded-[32px] sm:p-6">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/80" x-text="forcedAnnouncement?.type_label"></p>
+                    <h3 class="break-anywhere mt-2 text-2xl font-black" x-text="forcedAnnouncement?.title"></h3>
+                    <p class="mt-1 text-xs text-slate-400" x-text="forcedAnnouncement?.created_at_label"></p>
+                </div>
+                <button type="button" class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="forcedAnnouncement = null">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            <template x-if="forcedAnnouncement?.image_url">
+                <img class="mt-5 max-h-[360px] w-full rounded-[24px] object-cover" :src="forcedAnnouncement?.image_url" :alt="forcedAnnouncement?.title" draggable="false">
+            </template>
+            <p class="mt-5 whitespace-pre-line text-sm leading-7 text-slate-200" x-text="forcedAnnouncement?.body"></p>
+            <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                <button type="button" class="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 font-bold text-slate-100 transition hover:bg-white/15" @click="forcedAnnouncement = null">
+                    Bỏ qua
+                </button>
+                <form method="post" :action="forcedAnnouncement?.read_url">
+                    @csrf
+                    <button class="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-violet-500 px-5 py-3 font-black text-white shadow-glow transition hover:-translate-y-1">
+                        Xác nhận đã đọc
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <section class="relative max-w-full overflow-hidden rounded-[24px] border border-white/10 bg-white/[.06] p-4 shadow-glow backdrop-blur-2xl sm:rounded-[32px] sm:p-8">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_80%_15%,rgba(139,92,246,.45),transparent_30%),radial-gradient(circle_at_22%_85%,rgba(248,200,78,.18),transparent_30%)]"></div>
         <div class="relative grid min-w-0 gap-6 sm:gap-8 xl:grid-cols-[1.25fr_.75fr]">

@@ -16,6 +16,7 @@ use App\Services\WalletLedgerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -75,6 +76,58 @@ class AdminController extends Controller
         SiteSetting::setValue('brand_name', $data['brand_name']);
 
         return back()->with('status', 'Đã cập nhật logo và text thương hiệu.');
+    }
+
+    public function passwords(Request $request): View
+    {
+        $search = trim((string) $request->query('q', ''));
+        $digits = preg_replace('/\D+/', '', $search);
+        $users = collect();
+
+        if ($search !== '') {
+            $users = User::query()
+                ->where(function ($query) use ($search, $digits) {
+                    $query
+                        ->where('email', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+
+                    if ($digits !== '' && $digits !== $search) {
+                        $query->orWhere('phone', 'like', "%{$digits}%");
+                    }
+                })
+                ->orderBy('id')
+                ->limit(10)
+                ->get();
+        }
+
+        return view('admin.passwords', [
+            'search' => $search,
+            'users' => $users,
+        ]);
+    }
+
+    public function updateUserPassword(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'exists:users,id'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'user_id.required' => 'Vui lòng chọn user cần đổi mật khẩu.',
+            'user_id.exists' => 'User không tồn tại.',
+            'password.required' => 'Vui lòng nhập mật khẩu mới.',
+            'password.min' => 'Mật khẩu mới phải có tối thiểu 8 ký tự.',
+            'password.confirmed' => 'Xác nhận mật khẩu mới chưa khớp.',
+        ]);
+
+        $user = User::query()->findOrFail($data['user_id']);
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return redirect()
+            ->route('admin.passwords', ['q' => $user->email])
+            ->with('status', "Đã đổi mật khẩu cho {$user->email}.");
     }
 
     public function transferToUser(Request $request, WalletLedgerService $wallets): RedirectResponse

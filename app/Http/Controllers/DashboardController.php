@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Lesson;
 use App\Models\Subscription;
 use App\Models\UserLessonAccess;
+use App\Services\AnnouncementFeedService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, AnnouncementFeedService $announcements): View
     {
         $user = $request->user();
 
@@ -57,7 +58,14 @@ class DashboardController extends Controller
             ];
         });
 
-        return view('dashboard', compact('lessons', 'trialExpiresAt', 'activeSubscription'));
+        [, $pendingAnnouncements] = $announcements->forUser($user);
+
+        return view('dashboard', compact(
+            'lessons',
+            'trialExpiresAt',
+            'activeSubscription',
+            'pendingAnnouncements'
+        ));
     }
 
     public function toggle(Request $request, Lesson $lesson): RedirectResponse

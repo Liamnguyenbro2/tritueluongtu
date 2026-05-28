@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminLessonController;
 use App\Http\Controllers\AffiliateController;
@@ -30,7 +31,9 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::put('/profile/bank-account', [ProfileController::class, 'updateBank'])->name('profile.bank-account');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/announcements/{announcement}/read', [NotificationController::class, 'readAnnouncement'])->name('announcements.read');
     Route::get('/members', [AffiliateController::class, 'index'])->name('affiliate.index');
     Route::post('/lessons/{lesson}/toggle', [DashboardController::class, 'toggle'])->name('lessons.toggle');
     Route::get('/lessons/{lesson}/thumbnail', [ProtectedLessonMediaController::class, 'thumbnail'])->name('lessons.thumbnail');
@@ -47,6 +50,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/', [AdminController::class, 'index'])->name('index');
     Route::put('/branding', [AdminController::class, 'updateBranding'])->name('branding.update');
     Route::post('/wallet-transfer', [AdminController::class, 'transferToUser'])->name('wallet-transfer');
+    Route::get('/passwords', [AdminController::class, 'passwords'])->name('passwords');
+    Route::post('/passwords', [AdminController::class, 'updateUserPassword'])->name('passwords.update');
+    Route::get('/notifications', [AdminAnnouncementController::class, 'index'])->name('notifications.index');
+    Route::put('/notifications/fixed', [AdminAnnouncementController::class, 'updateFixed'])->name('notifications.fixed.update');
+    Route::post('/notifications/campaigns', [AdminAnnouncementController::class, 'storeCampaign'])->name('notifications.campaigns.store');
+    Route::post('/notifications/{announcement}/toggle', [AdminAnnouncementController::class, 'toggle'])->name('notifications.toggle');
     Route::get('/lessons', [AdminLessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons', [AdminLessonController::class, 'store'])->name('lessons.store');
     Route::put('/lessons/{lesson}', [AdminLessonController::class, 'update'])->name('lessons.update');
