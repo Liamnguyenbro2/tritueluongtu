@@ -8,6 +8,7 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletLedgerService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -378,5 +379,36 @@ class AdminWalletTransferTest extends TestCase
             'type' => 'withdrawal_refund',
             'memo' => 'Hoàn tiền yêu cầu rút bị từ chối: Sai thông tin ngân hàng',
         ]);
+    }
+    public function test_admin_can_open_shared_pool_history_from_dashboard(): void
+    {
+        $this->seed();
+        Carbon::setTestNow('2026-05-28 23:59:00');
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $wallets = app(WalletLedgerService::class);
+        $sharedPool = $wallets->systemWallet('shared_pool');
+
+        $wallets->credit($sharedPool, 200000, 'payment_shared_pool', null, 'Ghi nháº­n Pool Share test');
+        $wallets->credit($wallets->walletForUser($user), 50000, 'pool_share_payout', null, 'Chi láº¡i Pool Share 28/05/2026');
+        $wallets->debit($sharedPool, 50000, 'pool_share_distribution_out', null, 'Chi láº¡i Pool Share 28/05/2026');
+
+        $this->actingAs($admin)
+            ->get(route('admin.index'))
+            ->assertOk()
+            ->assertSee('shared-pool')
+            ->assertSee('shared_pool');
+
+        $this->actingAs($admin)
+            ->get(route('admin.shared-pool.history'))
+            ->assertOk()
+            ->assertSee('Lịch sử đồng chia')
+            ->assertSee('28/05/2026')
+            ->assertSee('200.000 đ', false)
+            ->assertSee('50.000 đ', false)
+            ->assertSee($user->email);
+
+        Carbon::setTestNow();
     }
 }

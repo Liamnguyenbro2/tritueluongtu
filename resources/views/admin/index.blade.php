@@ -295,6 +295,21 @@
 
 <script>
     (() => {
+        const sharedPoolCard = Array.from(document.querySelectorAll('section.grid.gap-5.md\\:grid-cols-3 > article'))
+            .find((card) => card.textContent.includes('shared_pool'));
+
+        if (sharedPoolCard) {
+            sharedPoolCard.classList.add('cursor-pointer');
+            sharedPoolCard.addEventListener('click', () => {
+                window.location.href = @js(route('admin.shared-pool.history'));
+            });
+
+            const hint = document.createElement('p');
+            hint.className = 'mt-2 text-xs uppercase tracking-[.2em] text-sky-200/70';
+            hint.textContent = 'Xem lich su dong chia';
+            sharedPoolCard.appendChild(hint);
+        }
+
         const modal = document.getElementById('withdraw-reject-modal');
         if (!modal) return;
         const form = modal.querySelector('form');

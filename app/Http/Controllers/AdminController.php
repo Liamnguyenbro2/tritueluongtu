@@ -55,6 +55,96 @@ class AdminController extends Controller
         ]); 
     }
 
+    public function sharedPoolHistory(WalletLedgerService $wallets): View
+    {
+        $sharedPool = $wallets->systemWallet('shared_pool');
+        $poolEntries = $sharedPool->ledgerEntries()
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $payoutsByDate = LedgerEntry::query()
+            ->join('wallets', 'wallets.id', '=', 'ledger_entries.wallet_id')
+            ->join('users', function ($join) {
+                $join->on('users.id', '=', 'wallets.owner_id')
+                    ->where('wallets.owner_type', '=', User::class);
+            })
+            ->where('wallets.type', 'user')
+            ->where('ledger_entries.type', 'pool_share_payout')
+            ->orderBy('ledger_entries.created_at')
+            ->orderBy('ledger_entries.id')
+            ->get([
+                'ledger_entries.id',
+                'ledger_entries.amount_vnd',
+                'ledger_entries.memo',
+                'ledger_entries.created_at',
+                'users.id as user_id',
+                'users.name as user_name',
+                'users.email as user_email',
+            ])
+            ->groupBy(fn ($entry) => Carbon::parse($entry->created_at)->toDateString());
+
+        $dateKeys = $poolEntries->map(fn (LedgerEntry $entry) => $entry->created_at->toDateString())
+            ->merge($payoutsByDate->keys())
+            ->unique()
+            ->sort()
+            ->values();
+
+        $runningBalance = 0;
+
+        $historyDays = $dateKeys->map(function (string $dateKey) use ($poolEntries, $payoutsByDate, &$runningBalance) {
+            $entriesForDay = $poolEntries->filter(fn (LedgerEntry $entry) => $entry->created_at->toDateString() === $dateKey);
+            $openingBalance = $runningBalance;
+            $poolInVnd = (int) $entriesForDay
+                ->where('type', 'payment_shared_pool')
+                ->sum('amount_vnd');
+            $distributedVnd = abs((int) $entriesForDay
+                ->where('type', 'pool_share_distribution_out')
+                ->sum('amount_vnd'));
+            $runningBalance += (int) $entriesForDay->sum('amount_vnd');
+
+            $payouts = $payoutsByDate->get($dateKey, collect())
+                ->map(fn ($entry) => (object) [
+                    'user_id' => $entry->user_id,
+                    'user_name' => $entry->user_name,
+                    'user_email' => $entry->user_email,
+                    'amount_vnd' => (int) $entry->amount_vnd,
+                    'memo' => $entry->memo,
+                    'created_at' => Carbon::parse($entry->created_at),
+                ])
+                ->values();
+
+            return (object) [
+                'date' => Carbon::parse($dateKey),
+                'opening_balance_vnd' => $openingBalance,
+                'pool_in_vnd' => $poolInVnd,
+                'distributed_vnd' => $distributedVnd,
+                'closing_balance_vnd' => $runningBalance,
+                'payout_count' => $payouts->count(),
+                'payouts' => $payouts,
+                'status' => match (true) {
+                    $distributedVnd > 0 => 'distributed',
+                    $poolInVnd > 0 => 'pending',
+                    default => 'idle',
+                },
+            ];
+        })->sortByDesc(fn ($day) => $day->date->timestamp)->values();
+
+        $lastDistributionEntry = $poolEntries
+            ->where('type', 'pool_share_distribution_out')
+            ->sortByDesc('created_at')
+            ->first();
+
+        return view('admin.shared-pool', [
+            'sharedPool' => $sharedPool,
+            'historyDays' => $historyDays,
+            'totalPoolInVnd' => (int) $poolEntries->where('type', 'payment_shared_pool')->sum('amount_vnd'),
+            'totalDistributedVnd' => abs((int) $poolEntries->where('type', 'pool_share_distribution_out')->sum('amount_vnd')),
+            'distributedDays' => $historyDays->where('distributed_vnd', '>', 0)->count(),
+            'lastDistributionAt' => $lastDistributionEntry?->created_at,
+        ]);
+    }
+
     public function updateBranding(Request $request): RedirectResponse
     {
         $data = $request->validate([
