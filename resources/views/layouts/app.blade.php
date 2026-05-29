@@ -336,6 +336,7 @@
                 <i data-lucide="alert-triangle" class="h-5 w-5"></i>{{ $errors->first() }}
             </div>
         @endif
+        @include('partials.voice-sample-popup')
         @yield('content')
     </main>
 </div>
@@ -399,6 +400,187 @@
                     setTimeout(() => window.location.reload(), 700);
                 }
             }
+        }));
+        Alpine.data('voiceSamplePrompt', (config) => ({
+            open: true,
+            hasUploaded: !!config.hasUploaded,
+            deleteAfterAt: config.deleteAfterAt ? new Date(config.deleteAfterAt).getTime() : null,
+            uploadUrl: config.uploadUrl,
+            completeUrl: config.completeUrl,
+            csrfToken: config.csrfToken,
+            mediaRecorder: null,
+            stream: null,
+            chunks: [],
+            audioUrl: null,
+            isRecording: false,
+            isBusy: false,
+            message: '',
+            error: false,
+            timer: '00:00',
+            deleteCountdown: '',
+            timerStartedAt: null,
+            init() {
+                if (this.deleteAfterAt) {
+                    this.tickDeleteCountdown();
+                    setInterval(() => this.tickDeleteCountdown(), 1000);
+                }
+            },
+            skip() {
+                this.stopStream();
+                this.open = false;
+            },
+            async startRecording() {
+                this.message = '';
+                this.error = false;
+
+                if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+                    this.error = true;
+                    this.message = 'Trình duyệt này chưa hỗ trợ ghi âm trực tiếp.';
+                    return;
+                }
+
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.mediaRecorder = new MediaRecorder(this.stream);
+                    this.chunks = [];
+                    this.timerStartedAt = Date.now();
+                    this.updateTimer();
+                    this.timerInterval = setInterval(() => this.updateTimer(), 1000);
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.chunks.push(event.data);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = async () => {
+                        clearInterval(this.timerInterval);
+                        this.timer = '00:00';
+
+                        const blob = new Blob(this.chunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
+
+                        if (!blob.size) {
+                            this.error = true;
+                            this.message = 'Không có dữ liệu ghi âm. Vui lòng thử lại.';
+                            this.stopStream();
+                            return;
+                        }
+
+                        if (this.audioUrl) {
+                            URL.revokeObjectURL(this.audioUrl);
+                        }
+
+                        this.audioUrl = URL.createObjectURL(blob);
+                        await this.uploadBlob(blob);
+                        this.stopStream();
+                    };
+
+                    this.mediaRecorder.start();
+                    this.isRecording = true;
+                } catch (error) {
+                    this.error = true;
+                    this.message = 'Không thể truy cập micro. Vui lòng cho phép quyền ghi âm rồi thử lại.';
+                }
+            },
+            stopRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.isRecording = false;
+                    this.mediaRecorder.stop();
+                }
+            },
+            async uploadBlob(blob) {
+                this.isBusy = true;
+                this.message = 'Đang tải bản ghi lên hệ thống...';
+                this.error = false;
+
+                const extension = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : blob.type.includes('wav') ? 'wav' : 'webm';
+                const formData = new FormData();
+                formData.append('recording', new File([blob], `voice-sample.${extension}`, { type: blob.type || 'audio/webm' }));
+
+                try {
+                    const response = await fetch(this.uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    });
+
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Tải file ghi âm thất bại.');
+                    }
+
+                    this.hasUploaded = true;
+                    this.deleteAfterAt = payload.delete_after_at ? new Date(payload.delete_after_at).getTime() : null;
+                    this.tickDeleteCountdown();
+                    this.message = payload.message || 'Đã tải bản ghi tạm thời lên hệ thống.';
+                } catch (error) {
+                    this.error = true;
+                    this.message = error.message || 'Không thể tải bản ghi lên hệ thống.';
+                } finally {
+                    this.isBusy = false;
+                }
+            },
+            async complete() {
+                this.isBusy = true;
+                this.message = 'Đang hoàn tất...';
+                this.error = false;
+
+                try {
+                    const response = await fetch(this.completeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Không thể hoàn thành bước ghi âm.');
+                    }
+
+                    this.message = payload.message || 'Đã hoàn tất.';
+                    setTimeout(() => window.location.reload(), 700);
+                } catch (error) {
+                    this.error = true;
+                    this.message = error.message || 'Không thể hoàn thành bước ghi âm.';
+                    this.isBusy = false;
+                }
+            },
+            updateTimer() {
+                if (!this.timerStartedAt) return;
+                const totalSeconds = Math.floor((Date.now() - this.timerStartedAt) / 1000);
+                const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+                const seconds = String(totalSeconds % 60).padStart(2, '0');
+                this.timer = `${minutes}:${seconds}`;
+            },
+            tickDeleteCountdown() {
+                if (!this.deleteAfterAt) {
+                    this.deleteCountdown = '';
+                    return;
+                }
+
+                const diff = Math.max(0, this.deleteAfterAt - Date.now());
+
+                if (diff === 0) {
+                    this.deleteCountdown = '00:00';
+                    return;
+                }
+
+                const totalSeconds = Math.ceil(diff / 1000);
+                const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+                const seconds = String(totalSeconds % 60).padStart(2, '0');
+                this.deleteCountdown = `${minutes}:${seconds}`;
+            },
+            stopStream() {
+                this.stream?.getTracks().forEach((track) => track.stop());
+                this.stream = null;
+            },
         }));
     });
     window.addEventListener('load', () => lucide.createIcons());

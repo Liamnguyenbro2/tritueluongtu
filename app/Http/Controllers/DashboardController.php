@@ -37,9 +37,11 @@ class DashboardController extends Controller
         $lessons = Lesson::query()->orderBy('position')->get()->map(function (Lesson $lesson) use ($accessByLessonId, $canActivatePaidLessons, $trialActive, $trialExpiresAt) {
             $paidAccess = $accessByLessonId->get($lesson->id);
             $paidAccessActive = $paidAccess?->isActive() ?? false;
-            $isTrialActive = $lesson->is_trial && $trialActive;
-            $isUnlocked = $lesson->is_trial ? $isTrialActive : $paidAccessActive;
-            $expiresAt = $lesson->is_trial ? $trialExpiresAt : ($paidAccessActive ? $paidAccess->expires_at : null);
+            $usesPaidFlow = $canActivatePaidLessons || $paidAccessActive;
+            $usesTrialFlow = $lesson->is_trial && ! $usesPaidFlow;
+            $isTrialActive = $usesTrialFlow && $trialActive;
+            $isUnlocked = $usesTrialFlow ? $isTrialActive : $paidAccessActive;
+            $expiresAt = $usesTrialFlow ? $trialExpiresAt : ($paidAccessActive ? $paidAccess->expires_at : null);
 
             return [
                 'id' => $lesson->id,
@@ -50,9 +52,9 @@ class DashboardController extends Controller
                 'media_type' => $lesson->media_type,
                 'media_url' => $lesson->media_path ? route('lessons.media', $lesson) : null,
                 'locked' => ! $isUnlocked,
-                'trial' => $lesson->is_trial,
+                'trial' => $usesTrialFlow,
                 'active' => $isUnlocked,
-                'can_activate' => ! $lesson->is_trial && $canActivatePaidLessons,
+                'can_activate' => ! $usesTrialFlow && $canActivatePaidLessons,
                 'expires_at' => $expiresAt?->toIso8601String(),
                 'expires_label' => $expiresAt?->format('d/m/Y H:i'),
             ];
@@ -70,7 +72,6 @@ class DashboardController extends Controller
 
     public function toggle(Request $request, Lesson $lesson): RedirectResponse
     {
-        abort_if($lesson->is_trial, 403);
         abort_unless($request->user()->canActivatePaidLessons(), 403);
 
         $existingAccess = UserLessonAccess::query()

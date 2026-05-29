@@ -56,7 +56,7 @@
                 </div>
                 <p class="text-sm text-slate-300">Xin chào,</p>
                 <h1 class="break-anywhere mt-1 text-3xl font-black tracking-tight text-white sm:text-6xl">{{ auth()->user()->name }}</h1>
-                <p class="mt-5 max-w-2xl text-base leading-8 text-slate-300">Thư viện nội dung với trial 48 giờ và các khóa trả phí cần bật Active trong 7 ngày trước khi học.</p>
+                <p class="mt-5 max-w-2xl text-base leading-8 text-slate-300">Hệ thống sử dụng trải nghiệm hình ảnh và âm thanh mô phỏng trạng thái.</p>
                 <div class="mt-7 flex min-w-0 flex-row gap-3 sm:flex-wrap">
                     <a href="{{ route('billing') }}" class="group inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold text-white shadow-glow transition hover:-translate-y-1 hover:shadow-[0_0_56px_rgba(139,92,246,.55)] sm:flex-none sm:gap-2 sm:px-5 sm:text-sm">
                         <i data-lucide="crown" class="h-5 w-5"></i> Nâng cấp trải nghiệm
@@ -91,7 +91,7 @@
                     @else
                         <div class="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                             <p class="text-sm font-semibold text-slate-200">Bạn chưa có gói trả phí đang hoạt động.</p>
-                            <p class="mt-1 text-xs text-slate-400">Nâng cấp để bật Active các khóa trả phí.</p>
+                            <p class="mt-1 text-xs text-slate-400">Nâng cấp ngay để bật các khóa trả phí.</p>
                         </div>
                     @endif
                     <a href="{{ route('billing') }}" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 text-sm font-black text-white shadow-glow transition hover:-translate-y-1">
@@ -119,7 +119,7 @@
         </div>
         <div class="glass col-span-2 min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5 md:col-span-1" x-data="{ copied: false, link: '{{ url('/register?ref='.auth()->user()->referralLink?->code) }}' }">
             <div class="flex items-center justify-between">
-                <p class="text-sm text-slate-400">Referral link</p>
+                <p class="text-sm text-slate-400">Link giới thiệu</p>
                 <i data-lucide="link" class="h-5 w-5 text-violet-300"></i>
             </div>
             <div class="mt-3 flex min-w-0 flex-col gap-2 rounded-2xl bg-black/20 p-2 sm:flex-row sm:items-center">
@@ -139,7 +139,7 @@
                 <p class="mobile-wrap text-sm font-semibold uppercase tracking-[.14em] text-violet-200/70 sm:tracking-[.24em]">Content Library</p>
                 <h2 class="break-anywhere mt-2 text-3xl font-black sm:text-4xl">Thư viện nội dung ({{ $lessons->count() }})</h2>
             </div>
-            <div class="break-anywhere w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center text-sm text-slate-300 sm:w-auto sm:rounded-full sm:text-left">Premium cinematic thumbnails</div>
+            <div class="break-anywhere w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center text-sm text-slate-300 sm:w-auto sm:rounded-full sm:text-left">Bản quyền bởi Trí tuệ lượng tử ®</div>
         </div>
 
         <div class="grid min-w-0 grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
@@ -177,7 +177,7 @@
                         @if($lesson['expires_at'])
                             <div x-data="{{ $lesson['trial'] ? "countdown('{$lesson['expires_at']}')" : "lessonCountdown('{$lesson['expires_at']}')" }}" class="mt-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 sm:mt-4 sm:px-4">
                                 <div class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                                    <span class="text-[10px] font-semibold uppercase text-slate-400 sm:text-xs">{{ $lesson['trial'] ? 'Còn lại trial' : 'Còn lại active' }}</span>
+                                    <span class="text-[10px] font-semibold uppercase text-slate-400 sm:text-xs">{{ $lesson['trial'] ? 'Còn lại trial' : 'Hệ thống tự động tắt' }}</span>
                                     @if($lesson['trial'])
                                         <span class="font-mono text-xs font-black text-amber-100 sm:text-sm" x-text="remaining"></span>
                                     @else
@@ -201,7 +201,7 @@
                                     <span class="relative inline-flex h-5 w-9 items-center rounded-full bg-emerald-400/30 sm:h-6 sm:w-11">
                                         <span class="ml-4 h-4 w-4 rounded-full bg-emerald-200 shadow-lg sm:ml-5 sm:h-5 sm:w-5"></span>
                                     </span>
-                                    Active
+                                    Đang bật
                                 </button>
                             @elseif($lesson['locked'] && ! $lesson['can_activate'])
                                 <a class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm" href="{{ route('billing') }}">
@@ -214,7 +214,7 @@
                                         <span class="relative inline-flex h-5 w-9 items-center rounded-full sm:h-6 sm:w-11 {{ $lesson['active'] ? 'bg-emerald-400/30' : 'bg-slate-500/30' }}">
                                             <span class="{{ $lesson['active'] ? 'ml-4 sm:ml-5 bg-emerald-200' : 'ml-1 bg-slate-300' }} h-4 w-4 rounded-full shadow-lg sm:h-5 sm:w-5"></span>
                                         </span>
-                                        {{ $lesson['active'] ? 'Active' : 'Bật active' }}
+                                        {{ $lesson['active'] ? 'Active' : 'Đang tắt' }}
                                     </button>
                                 </form>
                             @endif
@@ -229,14 +229,13 @@
         <div x-transition.scale class="glass w-full max-w-lg rounded-[24px] p-4 sm:rounded-[32px] sm:p-6">
             <div class="flex items-start justify-between gap-4 sm:gap-6">
                 <div class="min-w-0">
-                    <p class="text-sm text-violet-200">Content preview</p>
+                    <p class="text-sm text-violet-200">Bạn đang xem trước nội dung </p>
                     <h3 class="break-anywhere mt-2 text-2xl font-black" x-text="preview?.title"></h3>
                 </div>
                 <button class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="preview = null">
                     <i data-lucide="x" class="h-5 w-5"></i>
                 </button>
             </div>
-            <p class="mt-4 text-slate-300">Nội dung chỉ mở khi trial còn hạn hoặc khóa trả phí đang Active.</p>
             <div class="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-black/25" x-show="preview?.media_url">
                 <template x-if="preview?.media_type === 'video'">
                     <video class="max-h-[360px] w-full object-contain" controls controlsList="nodownload noplaybackrate" disablepictureinpicture oncontextmenu="return false" :src="preview?.media_url"></video>

@@ -6,15 +6,21 @@ use App\Http\Controllers\AdminLessonController;
 use App\Http\Controllers\AdminPlanController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BankWebhookController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProtectedLessonMediaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\VoiceSampleController;
 use App\Http\Controllers\WalletController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'landing')->name('landing');
+Route::post('/hooks/payment', BankWebhookController::class)
+    ->withoutMiddleware([VerifyCsrfToken::class])
+    ->name('hooks.payment');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
@@ -42,6 +48,8 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing/orders', [BillingController::class, 'store'])->name('billing.orders.store');
     Route::get('/billing/orders/{order}', [BillingController::class, 'show'])->name('billing.orders.show');
+    Route::post('/voice-sample', [VoiceSampleController::class, 'store'])->name('voice-sample.store');
+    Route::post('/voice-sample/complete', [VoiceSampleController::class, 'complete'])->name('voice-sample.complete');
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
     Route::post('/wallet/bank-account', [WalletController::class, 'saveBankAccount'])->name('wallet.bank-account');
     Route::post('/wallet/withdrawals', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
@@ -64,6 +72,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/lessons', [AdminLessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons', [AdminLessonController::class, 'store'])->name('lessons.store');
     Route::put('/lessons/{lesson}', [AdminLessonController::class, 'update'])->name('lessons.update');
+    Route::post('/lessons/{lesson}/delete-media', [AdminLessonController::class, 'deleteMedia'])->name('lessons.delete-media');
     Route::get('/users/{user}/report', [AdminController::class, 'report'])->name('users.report');
     Route::post('/users/{user}/suspend', [AdminController::class, 'suspend'])->name('users.suspend');
     Route::post('/users/{user}/unlock', [AdminController::class, 'unlock'])->name('users.unlock');

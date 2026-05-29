@@ -6,11 +6,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserProfile extends Model
 {
-    protected $fillable = ['user_id', 'accepted_terms', 'accepted_terms_at'];
+    protected $fillable = [
+        'user_id',
+        'accepted_terms',
+        'accepted_terms_at',
+        'voice_sample_path',
+        'voice_sample_uploaded_at',
+        'voice_sample_delete_after_at',
+        'voice_sample_completed_at',
+    ];
 
     protected function casts(): array
     {
-        return ['accepted_terms' => 'boolean', 'accepted_terms_at' => 'datetime'];
+        return [
+            'accepted_terms' => 'boolean',
+            'accepted_terms_at' => 'datetime',
+            'voice_sample_uploaded_at' => 'datetime',
+            'voice_sample_delete_after_at' => 'datetime',
+            'voice_sample_completed_at' => 'datetime',
+        ];
     }
 }
 

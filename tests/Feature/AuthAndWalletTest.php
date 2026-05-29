@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\WalletLedgerService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -283,6 +284,87 @@ class AuthAndWalletTest extends TestCase
             });
 
         $this->assertGuest();
+    }
+
+    public function test_login_is_temporarily_locked_after_five_failed_attempts(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        Cache::flush();
+
+        for ($i = 0; $i < 4; $i++) {
+            $this->from('/login')->post('/login', [
+                'login' => $user->email,
+                'password' => 'wrong-password',
+            ])->assertRedirect('/login');
+        }
+
+        $this->from('/login')->post('/login', [
+            'login' => $user->email,
+            'password' => 'wrong-password',
+        ])
+            ->assertRedirect('/login')
+            ->assertSessionHasErrors('login')
+            ->assertSessionHas('login_lock', function (array $lock) use ($user) {
+                return $lock['login'] === $user->email
+                    && $lock['seconds_remaining'] > 0;
+            });
+
+        $this->from('/login')->post('/login', [
+            'login' => $user->email,
+            'password' => 'password',
+        ])
+            ->assertRedirect('/login')
+            ->assertSessionHasErrors('login')
+            ->assertSessionHas('login_lock');
+
+        $this->assertGuest();
+    }
+
+    public function test_account_is_suspended_after_ten_failed_attempts(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        Cache::flush();
+        Carbon::setTestNow('2026-05-29 10:00:00');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->from('/login')->post('/login', [
+                'login' => $user->email,
+                'password' => 'wrong-password',
+            ])->assertRedirect('/login');
+        }
+
+        Carbon::setTestNow(now()->addMinutes(16));
+
+        for ($i = 0; $i < 4; $i++) {
+            $this->from('/login')->post('/login', [
+                'login' => $user->email,
+                'password' => 'wrong-password',
+            ])->assertRedirect('/login');
+        }
+
+        $this->from('/login')->post('/login', [
+            'login' => $user->email,
+            'password' => 'wrong-password',
+        ])
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('suspension_notice', function (array $notice) use ($user) {
+                return $notice['user_id'] === $user->id
+                    && $notice['email'] === $user->email
+                    && $notice['type_label'] === 'tạm thời'
+                    && $notice['reason'] === 'Tài khoản bạn bị tạm khóa do nhập sai mật khẩu quá nhiều lần';
+            });
+
+        $this->assertDatabaseHas('account_suspensions', [
+            'user_id' => $user->id,
+            'type' => 'temporary',
+            'reason' => 'Tài khoản bạn bị tạm khóa do nhập sai mật khẩu quá nhiều lần',
+        ]);
+
+        Carbon::setTestNow();
     }
 
     public function test_admin_can_unlock_suspended_user(): void

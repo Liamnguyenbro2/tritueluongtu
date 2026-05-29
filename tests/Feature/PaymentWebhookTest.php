@@ -146,4 +146,34 @@ class PaymentWebhookTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_trial_lesson_uses_paid_activation_flow_after_plan_purchase(): void
+    {
+        $this->seed();
+        Carbon::setTestNow('2026-05-25 10:00:00');
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $user->update([
+            'trial_started_at' => now()->subDays(10),
+        ]);
+
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $trialLesson = Lesson::query()->where('is_trial', true)->orderBy('position')->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
+        app(PaymentProcessor::class)->complete($order, 'BANK-TRIAL-ACTIVE');
+
+        $this->actingAs($user)
+            ->post(route('lessons.toggle', $trialLesson))
+            ->assertRedirect();
+
+        $access = UserLessonAccess::query()
+            ->where('user_id', $user->id)
+            ->where('lesson_id', $trialLesson->id)
+            ->firstOrFail();
+
+        $this->assertSame('paid', $access->source);
+        $this->assertSame('2026-06-01 10:00:00', $access->expires_at->toDateTimeString());
+
+        Carbon::setTestNow();
+    }
 }

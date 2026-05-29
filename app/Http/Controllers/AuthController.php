@@ -2,21 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountSuspension;
 use App\Models\Referral;
 use App\Models\ReferralLink;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\WalletLedgerService;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
+    private const LOGIN_LOCK_AFTER = 5;
+    private const LOGIN_SUSPEND_AFTER = 10;
+    private const LOGIN_LOCK_MINUTES = 15;
+    private const LOGIN_ATTEMPT_DECAY_HOURS = 24;
+
     public function showLogin(): View
     {
         return view('auth.login');
@@ -134,32 +142,62 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $field = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $login = trim((string) $credentials['login']);
+        $user = $this->resolveUserFromLogin($login);
+        [$attemptKey, $lockKey] = $this->loginGuardKeys($login, $user);
 
-        if (Auth::attempt([$field => $credentials['login'], 'password' => $credentials['password']], true)) {
+        if ($user && $user->activeSuspension()->exists()) {
+            return redirect()->route('login')
+                ->with('suspension_notice', $this->suspensionNoticePayload($user, $user->activeSuspension()->firstOrFail()))
+                ->withInput(['login' => $login]);
+        }
+
+        if ($lockPayload = $this->activeLoginLockPayload($login, $lockKey)) {
+            return back()
+                ->withErrors(['login' => 'Bạn đã nhập sai mật khẩu quá nhiều lần. Vui lòng chờ hết thời gian đếm ngược để thử lại.'])
+                ->with('login_lock', $lockPayload)
+                ->onlyInput('login');
+        }
+
+        if ($user && Auth::attempt(['id' => $user->id, 'password' => $credentials['password']], true)) {
+            $this->clearLoginGuards($login, $user);
+
             $request->session()->regenerate();
-
-            $user = $request->user();
-            $activeSuspension = $user?->activeSuspension()->first();
-
-            if ($user && $activeSuspension) {
-                Auth::logout();
-                $request->session()->regenerateToken();
-
-                return redirect()->route('login')->with('suspension_notice', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'type' => $activeSuspension->type,
-                    'type_label' => $activeSuspension->type === 'permanent' ? 'vĩnh viễn' : 'tạm thời',
-                    'reason' => $activeSuspension->reason,
-                    'ends_at' => $activeSuspension->ends_at?->format('d/m/Y H:i'),
-                ]);
-            }
 
             return redirect()->route('dashboard');
         }
 
-        return back()->withErrors(['login' => 'Thông tin đăng nhập không đúng.'])->onlyInput('login');
+        $attempts = $this->incrementFailedLoginAttempts($attemptKey);
+
+        if ($user && $attempts >= self::LOGIN_SUSPEND_AFTER) {
+            $this->clearLoginGuards($login, $user);
+
+            $suspension = AccountSuspension::query()->create([
+                'user_id' => $user->id,
+                'type' => 'temporary',
+                'reason' => 'Tài khoản bạn bị tạm khóa do nhập sai mật khẩu quá nhiều lần',
+                'starts_at' => now(),
+                'ends_at' => null,
+            ]);
+
+            return redirect()->route('login')
+                ->with('suspension_notice', $this->suspensionNoticePayload($user, $suspension))
+                ->withInput(['login' => $login]);
+        }
+
+        if ($attempts % self::LOGIN_LOCK_AFTER === 0) {
+            $lockUntil = now()->addMinutes(self::LOGIN_LOCK_MINUTES);
+            Cache::put($lockKey, $lockUntil->toIso8601String(), $lockUntil);
+
+            return back()
+                ->withErrors(['login' => 'Bạn đã nhập sai mật khẩu quá 5 lần. Vui lòng đợi 15 phút trước khi đăng nhập lại.'])
+                ->with('login_lock', $this->loginLockPayload($login, $lockUntil))
+                ->onlyInput('login');
+        }
+
+        return back()
+            ->withErrors(['login' => 'Thông tin đăng nhập không đúng.'])
+            ->onlyInput('login');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -169,5 +207,88 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('landing');
+    }
+
+    private function resolveUserFromLogin(string $login): ?User
+    {
+        $normalized = Str::lower(trim($login));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return User::query()
+            ->whereRaw('LOWER(email) = ?', [$normalized])
+            ->orWhereRaw('LOWER(username) = ?', [$normalized])
+            ->first();
+    }
+
+    private function loginGuardKeys(string $login, ?User $user): array
+    {
+        $suffix = $user
+            ? 'user:'.$user->id
+            : 'login:'.sha1(Str::lower(trim($login)));
+
+        return [
+            'auth_login_attempts:'.$suffix,
+            'auth_login_lock:'.$suffix,
+        ];
+    }
+
+    private function incrementFailedLoginAttempts(string $attemptKey): int
+    {
+        Cache::add($attemptKey, 0, now()->addHours(self::LOGIN_ATTEMPT_DECAY_HOURS));
+        $attempts = (int) Cache::increment($attemptKey);
+        Cache::put($attemptKey, $attempts, now()->addHours(self::LOGIN_ATTEMPT_DECAY_HOURS));
+
+        return $attempts;
+    }
+
+    private function activeLoginLockPayload(string $login, string $lockKey): ?array
+    {
+        $raw = Cache::get($lockKey);
+
+        if (! $raw) {
+            return null;
+        }
+
+        $lockUntil = Carbon::parse($raw);
+
+        if (! $lockUntil->isFuture()) {
+            Cache::forget($lockKey);
+
+            return null;
+        }
+
+        return $this->loginLockPayload($login, $lockUntil);
+    }
+
+    private function loginLockPayload(string $login, Carbon $lockUntil): array
+    {
+        return [
+            'login' => $login,
+            'until' => $lockUntil->toIso8601String(),
+            'seconds_remaining' => now()->diffInSeconds($lockUntil, false),
+        ];
+    }
+
+    private function clearLoginGuards(string $login, ?User $user): void
+    {
+        [$attemptKey, $lockKey] = $this->loginGuardKeys($login, $user);
+
+        Cache::forget($attemptKey);
+        Cache::forget($lockKey);
+    }
+
+    private function suspensionNoticePayload(User $user, AccountSuspension $suspension): array
+    {
+        return [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'type' => $suspension->type,
+            'type_label' => $suspension->type === 'permanent' ? 'vĩnh viễn' : 'tạm thời',
+            'reason' => $suspension->reason,
+            'ends_at' => $suspension->ends_at?->format('d/m/Y H:i'),
+        ];
     }
 }

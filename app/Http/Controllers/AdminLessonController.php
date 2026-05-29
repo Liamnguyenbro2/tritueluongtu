@@ -50,6 +50,18 @@ class AdminLessonController extends Controller
         return back()->with('status', 'Đã cập nhật nội dung khóa học.');
     }
 
+    public function deleteMedia(Lesson $lesson): RedirectResponse
+    {
+        $this->deleteFile($lesson->media_path);
+
+        $lesson->update([
+            'media_type' => null,
+            'media_path' => null,
+        ]);
+
+        return back()->with('status', 'Đã xóa media của bài học.');
+    }
+
     private function validated(Request $request): array
     {
         return $request->validate([

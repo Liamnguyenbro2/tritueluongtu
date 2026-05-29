@@ -38,8 +38,7 @@ class ProtectedLessonMediaController extends Controller
         }
 
         $trialExpiresAt = $user->trial_started_at?->copy()->addHours(config('quantum.trial_hours'));
-        $trialAllowed = $lesson->is_trial && $trialExpiresAt && now()->lt($trialExpiresAt);
-        $paidAllowed = ! $lesson->is_trial && UserLessonAccess::query()
+        $paidAllowed = UserLessonAccess::query()
             ->where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
             ->where('source', 'paid')
@@ -47,6 +46,11 @@ class ProtectedLessonMediaController extends Controller
             ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->exists();
+        $trialAllowed = $lesson->is_trial
+            && ! $paidAllowed
+            && ! $user->canActivatePaidLessons()
+            && $trialExpiresAt
+            && now()->lt($trialExpiresAt);
 
         abort_unless($trialAllowed || $paidAllowed, 403);
     }

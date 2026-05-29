@@ -61,6 +61,15 @@
                             @else
                                 <p class="mt-3 text-sm text-slate-400">Chưa upload media.</p>
                             @endif
+
+                            @if($lesson->media_path)
+                                <form method="post" action="{{ route('admin.lessons.delete-media', $lesson) }}" class="mt-4" onsubmit="return confirm('Bạn có chắc muốn xóa media của bài học này không?');">
+                                    @csrf
+                                    <button class="w-full rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-100 transition hover:bg-rose-500/20">
+                                        Xóa media
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
 

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Console\Commands\DebugPoolShare::class,
         App\Console\Commands\DistributePoolShare::class,
         App\Console\Commands\ExpireTrials::class,
+        App\Console\Commands\PurgeVoiceSamples::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
