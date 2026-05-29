@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserProfile;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +13,44 @@ class VoiceSampleController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'recording' => ['required', 'file', 'mimetypes:audio/webm,audio/mp4,audio/mpeg,audio/wav,audio/x-wav,audio/ogg', 'max:20480'],
+            'recording' => [
+                'required',
+                'file',
+                'max:20480',
+                function (string $attribute, $file, Closure $fail): void {
+                    $acceptedMimeTypes = [
+                        'audio/webm',
+                        'video/webm',
+                        'audio/mp4',
+                        'video/mp4',
+                        'audio/mpeg',
+                        'audio/mp3',
+                        'audio/wav',
+                        'audio/x-wav',
+                        'audio/wave',
+                        'audio/ogg',
+                        'audio/x-m4a',
+                        'audio/aac',
+                        'audio/3gpp',
+                        'audio/3gpp2',
+                        'application/octet-stream',
+                    ];
+                    $acceptedExtensions = ['webm', 'mp4', 'm4a', 'mp3', 'wav', 'ogg', 'aac', '3gp', '3gpp'];
+
+                    $mimeType = strtolower((string) ($file->getMimeType() ?: $file->getClientMimeType()));
+                    $extension = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension()));
+
+                    if (in_array($mimeType, $acceptedMimeTypes, true) || in_array($extension, $acceptedExtensions, true)) {
+                        return;
+                    }
+
+                    $fail('Định dạng file ghi âm này chưa được hỗ trợ trên thiết bị của bạn.');
+                },
+            ],
+        ], [
+            'recording.required' => 'Vui lòng ghi âm trước khi tải lên.',
+            'recording.file' => 'Bản ghi tải lên không hợp lệ.',
+            'recording.max' => 'File ghi âm quá lớn, vui lòng ghi âm ngắn hơn.',
         ]);
 
         $profile = $this->profileFor($request);

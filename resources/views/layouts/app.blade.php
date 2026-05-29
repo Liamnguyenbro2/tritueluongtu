@@ -441,7 +441,10 @@
 
                 try {
                     this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    this.mediaRecorder = new MediaRecorder(this.stream);
+                    const preferredMimeType = this.resolveRecorderMimeType();
+                    this.mediaRecorder = preferredMimeType
+                        ? new MediaRecorder(this.stream, { mimeType: preferredMimeType })
+                        : new MediaRecorder(this.stream);
                     this.chunks = [];
                     this.timerStartedAt = Date.now();
                     this.updateTimer();
@@ -457,7 +460,8 @@
                         clearInterval(this.timerInterval);
                         this.timer = '00:00';
 
-                        const blob = new Blob(this.chunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
+                        const blobType = this.mediaRecorder.mimeType || this.chunks[0]?.type || 'audio/webm';
+                        const blob = new Blob(this.chunks, { type: blobType });
 
                         if (!blob.size) {
                             this.error = true;
@@ -493,7 +497,7 @@
                 this.message = 'Đang tải bản ghi lên hệ thống...';
                 this.error = false;
 
-                const extension = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : blob.type.includes('wav') ? 'wav' : 'webm';
+                const extension = this.resolveRecordingExtension(blob.type);
                 const formData = new FormData();
                 formData.append('recording', new File([blob], `voice-sample.${extension}`, { type: blob.type || 'audio/webm' }));
 
@@ -558,6 +562,47 @@
                 const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
                 const seconds = String(totalSeconds % 60).padStart(2, '0');
                 this.timer = `${minutes}:${seconds}`;
+            },
+            resolveRecorderMimeType() {
+                const candidates = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/mp4',
+                    'video/mp4',
+                    'audio/ogg;codecs=opus',
+                    'audio/ogg',
+                ];
+
+                if (typeof MediaRecorder.isTypeSupported !== 'function') {
+                    return null;
+                }
+
+                return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || null;
+            },
+            resolveRecordingExtension(mimeType) {
+                const normalizedMimeType = String(mimeType || '').toLowerCase();
+
+                if (normalizedMimeType.includes('mp4') || normalizedMimeType.includes('m4a')) {
+                    return 'm4a';
+                }
+
+                if (normalizedMimeType.includes('mpeg') || normalizedMimeType.includes('mp3')) {
+                    return 'mp3';
+                }
+
+                if (normalizedMimeType.includes('wav')) {
+                    return 'wav';
+                }
+
+                if (normalizedMimeType.includes('ogg')) {
+                    return 'ogg';
+                }
+
+                if (normalizedMimeType.includes('3gpp') || normalizedMimeType.includes('3gp')) {
+                    return '3gp';
+                }
+
+                return 'webm';
             },
             tickDeleteCountdown() {
                 if (!this.deleteAfterAt) {

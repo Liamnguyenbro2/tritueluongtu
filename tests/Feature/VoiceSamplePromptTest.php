@@ -67,6 +67,25 @@ class VoiceSamplePromptTest extends TestCase
         $this->assertNotNull($profile->fresh()->voice_sample_completed_at);
     }
 
+    public function test_mobile_mp4_voice_upload_is_accepted(): void
+    {
+        $this->seed();
+        Storage::fake('local');
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+
+        $this->actingAs($user)
+            ->post(route('voice-sample.store'), [
+                'recording' => UploadedFile::fake()->create('voice.m4a', 200, 'video/mp4'),
+            ])
+            ->assertOk()
+            ->assertJsonStructure(['message', 'delete_after_at']);
+
+        $profile = $user->profile()->firstOrFail();
+        $this->assertNotNull($profile->voice_sample_path);
+        Storage::disk('local')->assertExists($profile->voice_sample_path);
+    }
+
     public function test_purge_command_deletes_expired_voice_sample_file(): void
     {
         $this->seed();
