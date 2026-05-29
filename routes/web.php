@@ -59,6 +59,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/notifications/campaigns', [AdminAnnouncementController::class, 'storeCampaign'])->name('notifications.campaigns.store');
     Route::post('/notifications/{announcement}/toggle', [AdminAnnouncementController::class, 'toggle'])->name('notifications.toggle');
     Route::get('/plans', [AdminPlanController::class, 'index'])->name('plans.index');
+    Route::get('/plans/{plan}', [AdminPlanController::class, 'show'])->name('plans.show');
     Route::put('/plans/{plan}', [AdminPlanController::class, 'update'])->name('plans.update');
     Route::get('/lessons', [AdminLessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons', [AdminLessonController::class, 'store'])->name('lessons.store');

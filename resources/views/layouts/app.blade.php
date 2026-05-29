@@ -189,6 +189,9 @@
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.passwords') }}">
                     <i data-lucide="key-round" class="h-5 w-5 text-emerald-300"></i><span>Đổi pass user</span>
                 </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.plans.index') }}">
+                    <i data-lucide="badge-dollar-sign" class="h-5 w-5 text-emerald-300"></i><span>Quản lý gói</span>
+                </a>
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.notifications.index') }}">
                     <i data-lucide="megaphone" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
                 </a>
@@ -228,10 +231,12 @@
     @endauth
 </aside>
 
+@php($headerMarqueeText = 'He thong su dung trai nghiem hinh anh va am thanh mo phong trang thai: Alpha, Theta, Deep Relaxation, Focus State.')
 <div class="relative z-10 min-h-screen max-w-full overflow-x-hidden lg:pl-72">
     <header class="sticky top-0 z-30 border-b border-white/10 bg-night/65 backdrop-blur-2xl">
-        <div class="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-10">
-            <button class="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 lg:hidden" @click="sidebarOpen = true">
+        <div class="px-4 py-3 sm:px-6 lg:px-10">
+            <div class="flex min-h-14 w-full items-center justify-between gap-3 sm:min-h-[5rem]">
+            <button class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5 lg:hidden" @click="sidebarOpen = true">
                 <i data-lucide="menu" class="h-5 w-5"></i>
             </button>
             <div class="header-marquee hidden min-w-0 flex-1 px-6 sm:flex sm:items-center">
@@ -242,7 +247,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="ml-auto flex shrink-0 items-center gap-3">
                 @auth
                     <div class="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-right sm:block">
                         <p class="text-xs text-slate-400">Số dư</p>
@@ -306,6 +311,16 @@
                         <i data-lucide="bell" class="h-5 w-5 text-amber-200"></i>
                     </div>
                 @endauth
+            </div>
+
+            </div>
+            <div class="hidden">
+                <div class="w-full rounded-2xl border border-white/10 bg-white/[.04] px-3 py-2">
+                    <div class="header-marquee__track text-xs font-medium text-slate-300">
+                        <span class="header-marquee__item pr-10">Há»‡ thá»‘ng sá»­ dá»¥ng tráº£i nghiá»‡m hÃ¬nh áº£nh vÃ  Ã¢m thanh mÃ´ phá»ng tráº¡ng thÃ¡i: Alpha, Theta, Deep Relaxation, Focus State.</span>
+                        <span class="header-marquee__item pr-10" aria-hidden="true">Há»‡ thá»‘ng sá»­ dá»¥ng tráº£i nghiá»‡m hÃ¬nh áº£nh vÃ  Ã¢m thanh mÃ´ phá»ng tráº¡ng thÃ¡i: Alpha, Theta, Deep Relaxation, Focus State.</span>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -387,6 +402,14 @@
         }));
     });
     window.addEventListener('load', () => lucide.createIcons());
+
+    (() => {
+        const marqueeText = @js($headerMarqueeText);
+
+        document.querySelectorAll('.header-marquee__item').forEach((item) => {
+            item.textContent = marqueeText;
+        });
+    })();
 
     (() => {
         const isEditable = (target) => {

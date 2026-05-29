@@ -91,7 +91,7 @@ class Lesson extends Model
 
 class Plan extends Model
 {
-    protected $fillable = ['code', 'name', 'description', 'duration_days', 'price_vnd', 'features'];
+    protected $fillable = ['code', 'name', 'description', 'duration_days', 'price_vnd', 'features', 'bank_qr_enabled', 'wallet_enabled'];
 
     protected function casts(): array
     {
@@ -99,6 +99,8 @@ class Plan extends Model
             'duration_days' => 'integer',
             'price_vnd' => 'integer',
             'features' => 'array',
+            'bank_qr_enabled' => 'boolean',
+            'wallet_enabled' => 'boolean',
         ];
     }
 
@@ -111,6 +113,14 @@ class Plan extends Model
             'Active từng khóa trong 7 ngày khi cần học',
             'Ghi nhận đầy đủ trong lịch sử hóa đơn',
         ];
+    }
+    public function allowsPaymentMethod(string $method): bool
+    {
+        return match ($method) {
+            'bank_qr' => $this->bank_qr_enabled,
+            'wallet' => $this->wallet_enabled,
+            default => false,
+        };
     }
 }
 

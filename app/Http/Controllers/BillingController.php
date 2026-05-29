@@ -37,6 +37,12 @@ class BillingController extends Controller
 
         $plan = Plan::query()->findOrFail($data['plan_id']);
 
+        if (! $plan->allowsPaymentMethod($data['payment_method'])) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'PhÆ°Æ¡ng thá»©c thanh toÃ¡n nÃ y Ä‘ang táº¡m táº¯t cho gÃ³i Ä‘Ã£ chá»n.',
+            ]);
+        }
+
         if ($data['payment_method'] === 'wallet') {
             try {
                 $order = $payments->payWithWallet($request->user(), $plan);

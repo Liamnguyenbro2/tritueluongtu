@@ -19,52 +19,90 @@
 
     <section class="grid gap-5 lg:grid-cols-2">
         @foreach($plans as $plan)
-            @php $canPayWithWallet = $wallet->balance_vnd >= $plan->price_vnd; @endphp
+            @php
+                $hasBankQr = $plan->bank_qr_enabled;
+                $hasWallet = $plan->wallet_enabled;
+                $canPayWithWallet = $hasWallet && $wallet->balance_vnd >= $plan->price_vnd;
+            @endphp
+
             <article class="group relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[.06] p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl transition duration-300 hover:-translate-y-2 hover:border-amber-200/40 hover:shadow-gold">
                 <div class="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-violet-500/30 blur-3xl transition group-hover:bg-amber-300/25"></div>
                 <div class="relative">
-                    <div class="mb-5 flex items-center justify-between">
+                    <div class="mb-5 flex items-center justify-between gap-3">
                         <div class="grid h-14 w-14 place-items-center rounded-3xl bg-gradient-to-br from-amber-300 to-violet-500 shadow-gold">
                             <i data-lucide="{{ $plan->code === 'yearly' ? 'crown' : 'calendar-days' }}" class="h-7 w-7 text-white"></i>
                         </div>
-                        @if($plan->code === 'yearly')
-                            <span class="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-night">Best value</span>
-                        @endif
+                        <div class="flex flex-wrap items-center justify-end gap-2 text-[11px] font-black uppercase tracking-[.18em]">
+                            @if($plan->code === 'yearly')
+                                <span class="rounded-full bg-amber-300 px-3 py-1 text-night">Best value</span>
+                            @endif
+                            <span class="rounded-full px-3 py-1 {{ $hasBankQr ? 'bg-violet-500/20 text-violet-100' : 'bg-white/5 text-slate-500' }}">
+                                QR {{ $hasBankQr ? 'ON' : 'OFF' }}
+                            </span>
+                            <span class="rounded-full px-3 py-1 {{ $hasWallet ? 'bg-emerald-500/20 text-emerald-100' : 'bg-white/5 text-slate-500' }}">
+                                Ví {{ $hasWallet ? 'ON' : 'OFF' }}
+                            </span>
+                        </div>
                     </div>
 
                     <h2 class="text-3xl font-black">{{ $plan->name }}</h2>
                     <p class="mt-4 bg-gradient-to-r from-white to-violet-200 bg-clip-text text-5xl font-black text-transparent">{{ number_format($plan->price_vnd, 0, ',', '.') }} đ</p>
                     <p class="mt-2 text-slate-400">{{ $plan->duration_days }} ngày sử dụng</p>
 
+                    @if($plan->description)
+                        <p class="mt-4 rounded-2xl border border-white/10 bg-black/15 px-4 py-3 text-sm leading-6 text-slate-300">
+                            {{ $plan->description }}
+                        </p>
+                    @endif
+
                     <ul class="mt-6 space-y-3 text-sm text-slate-300">
-                        <li class="flex items-center gap-3"><i data-lucide="check-circle-2" class="h-5 w-5 text-emerald-300"></i> Mở quyền kích hoạt các khóa trả phí</li>
-                        <li class="flex items-center gap-3"><i data-lucide="check-circle-2" class="h-5 w-5 text-emerald-300"></i> Active từng khóa trong 7 ngày khi cần học</li>
-                        <li class="flex items-center gap-3"><i data-lucide="check-circle-2" class="h-5 w-5 text-emerald-300"></i> Ghi nhận đầy đủ trong lịch sử hóa đơn</li>
+                        @foreach($plan->billingFeatures() as $feature)
+                            <li class="flex items-center gap-3">
+                                <i data-lucide="check-circle-2" class="h-5 w-5 text-emerald-300"></i>
+                                <span>{{ $feature }}</span>
+                            </li>
+                        @endforeach
                     </ul>
 
                     <div class="mt-7 grid gap-3 sm:grid-cols-2">
-                        <form method="post" action="{{ route('billing.orders.store') }}">
-                            @csrf
-                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                            <input type="hidden" name="payment_method" value="bank_qr">
-                            <button class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1">
-                                <i data-lucide="qr-code" class="h-5 w-5"></i> Tạo QR
-                            </button>
-                        </form>
+                        @if($hasBankQr)
+                            <form method="post" action="{{ route('billing.orders.store') }}">
+                                @csrf
+                                <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                                <input type="hidden" name="payment_method" value="bank_qr">
+                                <button class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1">
+                                    <i data-lucide="qr-code" class="h-5 w-5"></i> Tạo QR
+                                </button>
+                            </form>
+                        @else
+                            <div class="flex items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[.03] px-5 py-4 text-sm font-semibold text-slate-500">
+                                QR tạm tắt
+                            </div>
+                        @endif
 
-                        <form method="post" action="{{ route('billing.orders.store') }}">
-                            @csrf
-                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                            <input type="hidden" name="payment_method" value="wallet">
-                            <button
-                                class="flex w-full items-center justify-center gap-2 rounded-2xl border px-5 py-4 font-black transition {{ $canPayWithWallet ? 'border-emerald-300/30 bg-emerald-400/15 text-emerald-100 hover:-translate-y-1 hover:bg-emerald-400/20' : 'cursor-not-allowed border-white/10 bg-white/5 text-slate-500' }}"
-                                @disabled(! $canPayWithWallet)
-                            >
-                                <i data-lucide="wallet-cards" class="h-5 w-5"></i>
-                                {{ $canPayWithWallet ? 'Thanh toán ví' : 'Ví không đủ' }}
-                            </button>
-                        </form>
+                        @if($hasWallet)
+                            <form method="post" action="{{ route('billing.orders.store') }}">
+                                @csrf
+                                <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                                <input type="hidden" name="payment_method" value="wallet">
+                                <button
+                                    class="flex w-full items-center justify-center gap-2 rounded-2xl border px-5 py-4 font-black transition {{ $canPayWithWallet ? 'border-emerald-300/30 bg-emerald-400/15 text-emerald-100 hover:-translate-y-1 hover:bg-emerald-400/20' : 'cursor-not-allowed border-white/10 bg-white/5 text-slate-500' }}"
+                                    @disabled(! $canPayWithWallet)
+                                >
+                                    <i data-lucide="wallet-cards" class="h-5 w-5"></i>
+                                    {{ $wallet->balance_vnd >= $plan->price_vnd ? 'Thanh toán ví' : 'Ví không đủ' }}
+                                </button>
+                            </form>
+                        @else
+                            <div class="flex items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[.03] px-5 py-4 text-sm font-semibold text-slate-500">
+                                Thanh toán ví tạm tắt
+                            </div>
+                        @endif
                     </div>
+
+                    @if(! $hasBankQr && ! $hasWallet)
+                        <p class="mt-4 text-sm font-semibold text-amber-200">Gói này đang tạm tắt cả hai phương thức thanh toán.</p>
+                    @endif
                 </div>
             </article>
         @endforeach
