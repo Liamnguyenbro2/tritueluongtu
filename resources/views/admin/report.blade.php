@@ -181,6 +181,11 @@
                     </tbody>
                 </table>
             </div>
+            @if($referralRows->hasPages())
+                <div class="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-3">
+                    {{ $referralRows->onEachSide(1)->links() }}
+                </div>
+            @endif
         </div>
 
         <div class="space-y-6">

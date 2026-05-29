@@ -22,10 +22,13 @@ class AffiliateController extends Controller
         $filteredQuery = clone $baseQuery;
         $this->applyPeriod($filteredQuery, $period);
 
+        $filteredTotal = (clone $filteredQuery)->count();
+        $filteredActive = (clone $filteredQuery)->whereNotNull('activated_at')->count();
         $referrals = $filteredQuery
             ->latest()
-            ->get()
-            ->map(function (Referral $referral) use ($showFullContacts) {
+            ->paginate(15, ['*'], 'members_page')
+            ->withQueryString();
+        $referrals->getCollection()->transform(function (Referral $referral) use ($showFullContacts) {
                 $referred = $referral->referred;
                 $activeSubscription = $referred?->subscriptions
                     ->where('status', 'active')
@@ -44,8 +47,6 @@ class AffiliateController extends Controller
             });
 
         $allReferrals = $baseQuery->get();
-        $filteredTotal = $referrals->count();
-        $filteredActive = $referrals->where('is_active', true)->count();
 
         $weeks = collect(range(4, 0))->map(function (int $index) use ($user) {
             $start = now()->startOfWeek()->subWeeks($index);

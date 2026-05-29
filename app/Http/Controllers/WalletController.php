@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletLedgerService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +20,6 @@ class WalletController extends Controller
         $rawLedgerEntries = $wallet->ledgerEntries()
             ->with('reference')
             ->latest()
-            ->limit(40)
             ->get();
         $heldWithdrawalIds = $rawLedgerEntries
             ->where('reference_type', (new WithdrawalRequest())->getMorphClass())
@@ -27,10 +27,21 @@ class WalletController extends Controller
             ->pluck('reference_id')
             ->filter()
             ->all();
-        $ledgerEntries = $rawLedgerEntries
+        $filteredLedgerEntries = $rawLedgerEntries
             ->reject(fn ($entry) => $entry->type === 'withdrawal_payout' && in_array($entry->reference_id, $heldWithdrawalIds, true))
-            ->take(20)
             ->values();
+        $ledgerPage = LengthAwarePaginator::resolveCurrentPage('ledger_page');
+        $ledgerEntries = new LengthAwarePaginator(
+            $filteredLedgerEntries->forPage($ledgerPage, 15)->values(),
+            $filteredLedgerEntries->count(),
+            15,
+            $ledgerPage,
+            [
+                'path' => route('wallet'),
+                'pageName' => 'ledger_page',
+            ]
+        );
+        $ledgerEntries->withQueryString();
 
         return view('wallet.index', [
             'wallet' => $wallet,

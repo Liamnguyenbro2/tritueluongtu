@@ -152,6 +152,11 @@
                 </tbody>
             </table>
         </div>
+        @if($referrals->hasPages())
+            <div class="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-3">
+                {{ $referrals->onEachSide(1)->links() }}
+            </div>
+        @endif
     </section>
 </div>
 @endsection

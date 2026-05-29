@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminLessonController;
+use App\Http\Controllers\AdminPlanController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
@@ -56,6 +57,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('/notifications/fixed', [AdminAnnouncementController::class, 'updateFixed'])->name('notifications.fixed.update');
     Route::post('/notifications/campaigns', [AdminAnnouncementController::class, 'storeCampaign'])->name('notifications.campaigns.store');
     Route::post('/notifications/{announcement}/toggle', [AdminAnnouncementController::class, 'toggle'])->name('notifications.toggle');
+    Route::get('/plans', [AdminPlanController::class, 'index'])->name('plans.index');
+    Route::put('/plans/{plan}', [AdminPlanController::class, 'update'])->name('plans.update');
     Route::get('/lessons', [AdminLessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons', [AdminLessonController::class, 'store'])->name('lessons.store');
     Route::put('/lessons/{lesson}', [AdminLessonController::class, 'update'])->name('lessons.update');

@@ -91,13 +91,25 @@ class Lesson extends Model
 
 class Plan extends Model
 {
-    protected $fillable = ['code', 'name', 'duration_days', 'price_vnd'];
+    protected $fillable = ['code', 'name', 'description', 'duration_days', 'price_vnd', 'features'];
 
     protected function casts(): array
     {
         return [
             'duration_days' => 'integer',
             'price_vnd' => 'integer',
+            'features' => 'array',
+        ];
+    }
+
+    public function billingFeatures(): array
+    {
+        $features = is_array($this->features) ? array_values(array_filter($this->features)) : [];
+
+        return $features ?: [
+            'Mở quyền kích hoạt các khóa trả phí',
+            'Active từng khóa trong 7 ngày khi cần học',
+            'Ghi nhận đầy đủ trong lịch sử hóa đơn',
         ];
     }
 }

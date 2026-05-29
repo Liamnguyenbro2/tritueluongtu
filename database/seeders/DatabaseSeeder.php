@@ -53,14 +53,26 @@ class DatabaseSeeder extends Seeder
 
         Plan::query()->updateOrCreate(['code' => 'monthly'], [
             'name' => 'Gói Tháng',
+            'description' => 'Phù hợp trải nghiệm nội dung trả phí theo tháng.',
             'duration_days' => 30,
             'price_vnd' => 199000,
+            'features' => [
+                'Mở quyền kích hoạt các khóa trả phí',
+                'Active từng khóa trong 7 ngày khi cần học',
+                'Ghi nhận đầy đủ trong lịch sử hóa đơn',
+            ],
         ]);
 
         Plan::query()->updateOrCreate(['code' => 'yearly'], [
             'name' => 'Gói Năm',
+            'description' => 'Tối ưu chi phí khi sử dụng lâu dài.',
             'duration_days' => 365,
             'price_vnd' => 1500000,
+            'features' => [
+                'Mở quyền kích hoạt các khóa trả phí',
+                'Active từng khóa trong 7 ngày khi cần học',
+                'Ghi nhận đầy đủ trong lịch sử hóa đơn',
+            ],
         ]);
 
         $course = Course::query()->firstOrCreate([

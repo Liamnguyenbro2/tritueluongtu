@@ -153,6 +153,11 @@
                 </tbody>
             </table>
         </div>
+        @if($ledgerEntries->hasPages())
+            <div class="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-3">
+                {{ $ledgerEntries->onEachSide(1)->links() }}
+            </div>
+        @endif
     </section>
 </div>
 

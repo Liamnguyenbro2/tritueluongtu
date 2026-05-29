@@ -180,10 +180,13 @@ class AdminController extends Controller
         $filteredReferralQuery = clone $referralQuery;
         $this->applyPeriod($filteredReferralQuery, $period);
 
+        $filteredTotal = (clone $filteredReferralQuery)->count();
+        $filteredActive = (clone $filteredReferralQuery)->whereNotNull('activated_at')->count();
         $referralRows = $filteredReferralQuery
             ->latest()
-            ->get()
-            ->map(function (Referral $referral) {
+            ->paginate(15, ['*'], 'report_members_page')
+            ->withQueryString();
+        $referralRows->getCollection()->transform(function (Referral $referral) {
                 $referred = $referral->referred;
                 $activeSubscription = $referred?->subscriptions
                     ->where('status', 'active')
@@ -251,8 +254,8 @@ class AdminController extends Controller
             'totalActivated' => $allReferrals->whereNotNull('activated_at')->count(),
             'affiliateIncomeVnd' => $affiliateIncomeVnd,
             'sharedPoolIncomeVnd' => $sharedPoolIncomeVnd,
-            'filteredTotal' => $referralRows->count(),
-            'filteredActive' => $referralRows->where('is_active', true)->count(),
+            'filteredTotal' => $filteredTotal,
+            'filteredActive' => $filteredActive,
             'weeks' => $weeks,
             'maxChartValue' => max(1, $weeks->max(fn ($week) => max($week['invited'], $week['activated']))),
         ]);
