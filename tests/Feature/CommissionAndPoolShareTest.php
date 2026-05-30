@@ -115,6 +115,62 @@ class CommissionAndPoolShareTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_pool_share_distribution_keeps_unqualified_group_funds_in_shared_pool(): void
+    {
+        $this->seed();
+        Carbon::setTestNow('2026-05-25 23:59:00');
+
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $wallets = app(WalletLedgerService::class);
+        $groupA = $this->eligibleReferrer('only-a', 10, $plan);
+
+        $wallets->credit($wallets->systemWallet('shared_pool'), 450000, 'payment_shared_pool');
+
+        $this->artisan('pool-share:distribute 2026-05-25')->assertSuccessful();
+
+        $this->assertSame(149850, $wallets->walletForUser($groupA)->fresh()->balance_vnd);
+        $this->assertSame(300150, $wallets->systemWallet('shared_pool')->fresh()->balance_vnd);
+        $this->assertDatabaseHas('ledger_entries', [
+            'wallet_id' => $wallets->systemWallet('shared_pool')->id,
+            'amount_vnd' => -149850,
+            'type' => 'pool_share_distribution_out',
+            'memo' => 'Chi lại Pool Share 25/05/2026',
+        ]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_weekly_pool_share_refund_moves_remaining_balance_to_admin_wallet(): void
+    {
+        $this->seed();
+        Carbon::setTestNow('2026-05-31 23:59:00');
+
+        $wallets = app(WalletLedgerService::class);
+        $sharedPool = $wallets->systemWallet('shared_pool');
+        $adminWallet = $wallets->systemWallet('admin');
+
+        $wallets->credit($sharedPool, 300150, 'payment_shared_pool');
+
+        $this->artisan('pool-share:refund-weekly 2026-05-31')->assertSuccessful();
+
+        $this->assertSame(0, $sharedPool->fresh()->balance_vnd);
+        $this->assertSame(300150, $adminWallet->fresh()->balance_vnd);
+        $this->assertDatabaseHas('ledger_entries', [
+            'wallet_id' => $sharedPool->id,
+            'amount_vnd' => -300150,
+            'type' => 'pool_share_weekly_refund_out',
+            'memo' => 'Hoàn trả Pool Share còn lại dư tuần 31/05/2026',
+        ]);
+        $this->assertDatabaseHas('ledger_entries', [
+            'wallet_id' => $adminWallet->id,
+            'amount_vnd' => 300150,
+            'type' => 'pool_share_weekly_refund_in',
+            'memo' => 'Hoàn trả Pool Share còn lại dư tuần 31/05/2026',
+        ]);
+
+        Carbon::setTestNow();
+    }
+
     private function eligibleReferrer(string $prefix, int $activeReferralCount, Plan $plan): User
     {
         $user = $this->referrerWithoutPaidPlan($prefix, $activeReferralCount);

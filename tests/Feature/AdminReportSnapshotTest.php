@@ -74,20 +74,20 @@ class AdminReportSnapshotTest extends TestCase
         $this->assertSame(150000, $snapshot->vat_vnd);
         $this->assertSame(675000, $snapshot->company_revenue_vnd);
         $this->assertSame(225000, $snapshot->pool_share_in_vnd);
-        $this->assertSame(225000, $snapshot->pool_share_distributed_vnd);
-        $this->assertSame(0, $snapshot->shared_pool_balance_vnd);
+        $this->assertSame(74925, $snapshot->pool_share_distributed_vnd);
+        $this->assertSame(150075, $snapshot->shared_pool_balance_vnd);
         $this->assertSame(1, $snapshot->poolShareRows()->count());
         $this->assertSame(5, $snapshot->logs()->count());
 
         $groupA = $snapshot->pool_group_stats['A'];
         $this->assertSame(1, $groupA['qualified_count']);
-        $this->assertSame(225000, $groupA['group_total_vnd']);
-        $this->assertSame(225000, $groupA['amount_each_vnd']);
+        $this->assertSame(74925, $groupA['group_total_vnd']);
+        $this->assertSame(74925, $groupA['amount_each_vnd']);
 
         $row = $snapshot->poolShareRows()->firstOrFail();
         $this->assertSame('A', $row->group_code);
         $this->assertSame(10, $row->active_referrals_count);
-        $this->assertSame(225000, $row->payout_vnd);
+        $this->assertSame(74925, $row->payout_vnd);
 
         Carbon::setTestNow();
     }

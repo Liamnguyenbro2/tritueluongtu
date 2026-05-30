@@ -38,46 +38,27 @@ class PoolShareAllocator
             ];
         });
 
-        $eligibleGroups = $normalizedGroups->filter(fn (array $group) => $group['count'] > 0)->values();
+        $allocatedTotal = 0;
+        $lastGroupIndex = $normalizedGroups->count() - 1;
 
-        if ($eligibleGroups->isEmpty()) {
-            foreach ($rules as $group => $rule) {
-                $summary[$group] = $this->emptySummary($rule);
-            }
-
-            return [
-                'summary' => $summary,
-                'payouts' => $payouts,
-                'paid_total' => 0,
-            ];
-        }
-
-        $effectiveBasisPoints = (int) $eligibleGroups->sum(fn (array $group) => (int) $group['rule']['share_bp']);
-        $distributedGroupTotal = 0;
-        $lastEligibleIndex = $eligibleGroups->count() - 1;
-
-        foreach ($normalizedGroups as $groupData) {
+        foreach ($normalizedGroups->values() as $groupIndex => $groupData) {
             $group = $groupData['group'];
             $rule = $groupData['rule'];
             $recipients = $groupData['recipients'];
             $count = $groupData['count'];
+            $groupBudget = $groupIndex === $lastGroupIndex
+                ? $poolTotal - $allocatedTotal
+                : intdiv($poolTotal * (int) $rule['share_bp'], 10000);
+
+            $allocatedTotal += $groupBudget;
 
             if ($count === 0) {
-                $summary[$group] = $this->emptySummary($rule);
+                $summary[$group] = $this->emptySummary($rule, $groupBudget);
                 continue;
             }
 
-            $baseGroupTotal = intdiv($poolTotal * (int) $rule['share_bp'], $effectiveBasisPoints);
-
-            $currentEligibleIndex = $eligibleGroups->search(fn (array $eligible) => $eligible['group'] === $group);
-            $groupTotal = $currentEligibleIndex === $lastEligibleIndex
-                ? $poolTotal - $distributedGroupTotal
-                : $baseGroupTotal;
-
-            $distributedGroupTotal += $groupTotal;
-
-            $amountEach = intdiv($groupTotal, $count);
-            $groupRemainder = $groupTotal - ($amountEach * $count);
+            $amountEach = intdiv($groupBudget, $count);
+            $groupRemainder = $groupBudget - ($amountEach * $count);
 
             foreach ($recipients->values() as $recipientIndex => $recipient) {
                 $amount = $amountEach;
@@ -96,7 +77,9 @@ class PoolShareAllocator
             $summary[$group] = [
                 'users' => $count,
                 'amount_each' => $amountEach,
-                'paid_total' => $groupTotal,
+                'paid_total' => $groupBudget,
+                'retained_total' => 0,
+                'allocated_total' => $groupBudget,
                 'share_bp' => (int) $rule['share_bp'],
                 'min' => (int) $rule['min'],
                 'max' => $rule['max'] === null ? null : (int) $rule['max'],
@@ -107,15 +90,18 @@ class PoolShareAllocator
             'summary' => $summary,
             'payouts' => $payouts,
             'paid_total' => (int) $payouts->sum('amount_vnd'),
+            'retained_total' => $poolTotal - (int) $payouts->sum('amount_vnd'),
         ];
     }
 
-    private function emptySummary(array $rule): array
+    private function emptySummary(array $rule, int $allocatedTotal = 0): array
     {
         return [
             'users' => 0,
             'amount_each' => 0,
             'paid_total' => 0,
+            'retained_total' => $allocatedTotal,
+            'allocated_total' => $allocatedTotal,
             'share_bp' => (int) $rule['share_bp'],
             'min' => (int) $rule['min'],
             'max' => $rule['max'] === null ? null : (int) $rule['max'],

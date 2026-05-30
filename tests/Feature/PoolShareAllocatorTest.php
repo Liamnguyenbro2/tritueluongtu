@@ -29,7 +29,31 @@ class PoolShareAllocatorTest extends TestCase
         $this->assertSame(6680000, $summary['C']['paid_total']);
         $this->assertSame(1336000, $summary['C']['amount_each']);
         $this->assertSame(20000000, $allocation['paid_total']);
+        $this->assertSame(0, $allocation['retained_total']);
         $this->assertSame(20000000, (int) $payouts->sum('amount_vnd'));
+    }
+
+    public function test_allocator_keeps_unqualified_group_funds_in_shared_pool_balance(): void
+    {
+        $allocation = app(PoolShareAllocator::class)->allocate(
+            450000,
+            collect([
+                'A' => $this->fakeRecipients('A', 1),
+                'B' => collect(),
+                'C' => collect(),
+            ])
+        );
+
+        $summary = collect($allocation['summary']);
+        $payouts = collect($allocation['payouts']);
+
+        $this->assertSame(149850, $summary['A']['paid_total']);
+        $this->assertSame(149850, $summary['A']['amount_each']);
+        $this->assertSame(149850, $summary['B']['retained_total']);
+        $this->assertSame(150300, $summary['C']['retained_total']);
+        $this->assertSame(149850, $allocation['paid_total']);
+        $this->assertSame(300150, $allocation['retained_total']);
+        $this->assertSame(149850, (int) $payouts->sum('amount_vnd'));
     }
 
     private function fakeRecipients(string $group, int $count): Collection
