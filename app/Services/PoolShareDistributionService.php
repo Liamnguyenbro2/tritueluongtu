@@ -12,6 +12,7 @@ class PoolShareDistributionService
     public function __construct(
         private readonly WalletLedgerService $ledger,
         private readonly ReferralCommissionService $referrals,
+        private readonly PoolShareAllocator $allocator,
     ) {
     }
 
@@ -55,35 +56,19 @@ class PoolShareDistributionService
                 ->filter(fn ($users, $group) => $group !== '');
 
             $paidTotal = 0;
-            $summary = [];
+            $allocation = $this->allocator->allocate($poolTotal, $eligibleUsers);
+            $summary = $allocation['summary'];
 
-            foreach (config('quantum.pool_share_groups', []) as $group => $rule) {
-                $users = $eligibleUsers->get($group, collect());
-                $count = $users->count();
-
-                if ($count === 0) {
-                    $summary[$group] = ['users' => 0, 'amount_each' => 0, 'paid_total' => 0];
+            foreach ($allocation['payouts'] as $payout) {
+                if ((int) $payout['amount_vnd'] <= 0) {
                     continue;
                 }
 
-                $groupTotal = intdiv($poolTotal * (int) $rule['share_bp'], 10000);
-                $amountEach = intdiv($groupTotal, $count);
-
-                if ($amountEach <= 0) {
-                    $summary[$group] = ['users' => $count, 'amount_each' => 0, 'paid_total' => 0];
-                    continue;
-                }
-
-                foreach ($users as $user) {
-                    $this->ledger->credit($this->ledger->walletForUser($user), $amountEach, 'pool_share_payout', null, $memo);
-                    $paidTotal += $amountEach;
-                }
-
-                $summary[$group] = [
-                    'users' => $count,
-                    'amount_each' => $amountEach,
-                    'paid_total' => $amountEach * $count,
-                ];
+                /** @var \App\Models\User $user */
+                $user = $payout['recipient'];
+                $amount = (int) $payout['amount_vnd'];
+                $this->ledger->credit($this->ledger->walletForUser($user), $amount, 'pool_share_payout', null, $memo);
+                $paidTotal += $amount;
             }
 
             if ($paidTotal > 0) {

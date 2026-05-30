@@ -19,8 +19,8 @@ return [
     ],
     'affiliate_commission_percent' => 30,
     'pool_share_groups' => [
-        'A' => ['min' => 10, 'max' => 49, 'share_bp' => 1330],
+        'A' => ['min' => 10, 'max' => 49, 'share_bp' => 3330],
         'B' => ['min' => 50, 'max' => 99, 'share_bp' => 3330],
-        'C' => ['min' => 100, 'max' => null, 'share_bp' => 5340],
+        'C' => ['min' => 100, 'max' => null, 'share_bp' => 3340],
     ],
 ];

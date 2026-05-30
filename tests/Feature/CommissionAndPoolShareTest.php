@@ -91,9 +91,9 @@ class CommissionAndPoolShareTest extends TestCase
 
         $this->artisan('pool-share:distribute 2026-05-25')->assertSuccessful();
 
-        $this->assertSame(2660000, $wallets->walletForUser($groupA)->fresh()->balance_vnd);
+        $this->assertSame(6660000, $wallets->walletForUser($groupA)->fresh()->balance_vnd);
         $this->assertSame(6660000, $wallets->walletForUser($groupB)->fresh()->balance_vnd);
-        $this->assertSame(10680000, $wallets->walletForUser($groupC)->fresh()->balance_vnd);
+        $this->assertSame(6680000, $wallets->walletForUser($groupC)->fresh()->balance_vnd);
         $this->assertSame(0, $wallets->walletForUser($trialOnly)->fresh()->balance_vnd);
         $this->assertSame(0, $wallets->systemWallet('shared_pool')->fresh()->balance_vnd);
 

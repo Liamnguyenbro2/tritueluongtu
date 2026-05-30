@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class AdminReportSnapshotService
 {
+    public function __construct(
+        private readonly PoolShareAllocator $allocator,
+    ) {
+    }
+
     public function capture(?Carbon $date = null): AdminReportSnapshot
     {
         $date ??= now();
@@ -108,42 +113,39 @@ class AdminReportSnapshotService
     private function poolShareSnapshot(Carbon $at, int $poolTotal, string $distributionMemo): array
     {
         $eligibleUsers = $this->eligiblePoolShareUsers($at);
-        $groupRules = config('quantum.pool_share_groups', []);
+        $allocation = $this->allocator->allocate(
+            $poolTotal,
+            $eligibleUsers->groupBy('group_code')->map(fn (Collection $group) => $group->values())
+        );
+
         $groupStats = [];
         $rows = collect();
 
-        foreach ($groupRules as $group => $rule) {
-            $users = $eligibleUsers->where('group_code', $group)->values();
-            $count = $users->count();
-            $groupTotal = $count > 0 ? intdiv($poolTotal * (int) $rule['share_bp'], 10000) : 0;
-            $amountEach = $count > 0 ? intdiv($groupTotal, $count) : 0;
-
+        foreach ($allocation['summary'] as $group => $stats) {
             $groupStats[$group] = [
-                'min' => (int) $rule['min'],
-                'max' => $rule['max'] === null ? null : (int) $rule['max'],
-                'share_bp' => (int) $rule['share_bp'],
-                'qualified_count' => $count,
-                'group_total_vnd' => $groupTotal,
-                'amount_each_vnd' => $amountEach,
+                'min' => $stats['min'],
+                'max' => $stats['max'],
+                'share_bp' => $stats['share_bp'],
+                'qualified_count' => $stats['users'],
+                'group_total_vnd' => $stats['paid_total'],
+                'amount_each_vnd' => $stats['amount_each'],
                 'distribution_memo' => $distributionMemo,
             ];
+        }
 
-            if ($count === 0 || $amountEach <= 0) {
-                continue;
-            }
+        foreach ($allocation['payouts'] as $payout) {
+            $user = $payout['recipient'];
 
-            foreach ($users as $user) {
-                $rows->push([
-                    'user_id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'group_code' => $group,
-                    'active_referrals_count' => $user['active_referrals_count'],
-                    'payout_vnd' => $amountEach,
-                    'account_status' => 'Gói còn hiệu lực',
-                    'subscription_ends_at' => $user['subscription_ends_at'],
-                ]);
-            }
+            $rows->push([
+                'user_id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'group_code' => $payout['group'],
+                'active_referrals_count' => $user['active_referrals_count'],
+                'payout_vnd' => (int) $payout['amount_vnd'],
+                'account_status' => 'Gói còn hiệu lực',
+                'subscription_ends_at' => $user['subscription_ends_at'],
+            ]);
         }
 
         return [$groupStats, $rows];

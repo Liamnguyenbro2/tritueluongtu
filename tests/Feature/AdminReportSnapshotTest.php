@@ -74,20 +74,20 @@ class AdminReportSnapshotTest extends TestCase
         $this->assertSame(150000, $snapshot->vat_vnd);
         $this->assertSame(675000, $snapshot->company_revenue_vnd);
         $this->assertSame(225000, $snapshot->pool_share_in_vnd);
-        $this->assertSame(29925, $snapshot->pool_share_distributed_vnd);
-        $this->assertSame(195075, $snapshot->shared_pool_balance_vnd);
+        $this->assertSame(225000, $snapshot->pool_share_distributed_vnd);
+        $this->assertSame(0, $snapshot->shared_pool_balance_vnd);
         $this->assertSame(1, $snapshot->poolShareRows()->count());
         $this->assertSame(5, $snapshot->logs()->count());
 
         $groupA = $snapshot->pool_group_stats['A'];
         $this->assertSame(1, $groupA['qualified_count']);
-        $this->assertSame(29925, $groupA['group_total_vnd']);
-        $this->assertSame(29925, $groupA['amount_each_vnd']);
+        $this->assertSame(225000, $groupA['group_total_vnd']);
+        $this->assertSame(225000, $groupA['amount_each_vnd']);
 
         $row = $snapshot->poolShareRows()->firstOrFail();
         $this->assertSame('A', $row->group_code);
         $this->assertSame(10, $row->active_referrals_count);
-        $this->assertSame(29925, $row->payout_vnd);
+        $this->assertSame(225000, $row->payout_vnd);
 
         Carbon::setTestNow();
     }
@@ -106,13 +106,13 @@ class AdminReportSnapshotTest extends TestCase
             'affiliate_commission_vnd' => 9000000,
             'vat_vnd' => 3000000,
             'company_revenue_vnd' => 13500000,
-            'pool_share_in_vnd' => 4500000,
-            'pool_share_distributed_vnd' => 2660000,
-            'shared_pool_balance_vnd' => 20000000,
+            'pool_share_in_vnd' => 20000000,
+            'pool_share_distributed_vnd' => 20000000,
+            'shared_pool_balance_vnd' => 0,
             'pool_group_stats' => [
-                'A' => ['min' => 10, 'max' => 49, 'share_bp' => 1330, 'qualified_count' => 30, 'group_total_vnd' => 2660000, 'amount_each_vnd' => 88666],
-                'B' => ['min' => 50, 'max' => 99, 'share_bp' => 3330, 'qualified_count' => 10, 'group_total_vnd' => 6660000, 'amount_each_vnd' => 666000],
-                'C' => ['min' => 100, 'max' => null, 'share_bp' => 5340, 'qualified_count' => 5, 'group_total_vnd' => 10680000, 'amount_each_vnd' => 2136000],
+                'A' => ['min' => 10, 'max' => 49, 'share_bp' => 3330, 'qualified_count' => 30, 'group_total_vnd' => 9990000, 'amount_each_vnd' => 333000],
+                'B' => ['min' => 50, 'max' => 99, 'share_bp' => 3330, 'qualified_count' => 10, 'group_total_vnd' => 9990000, 'amount_each_vnd' => 999000],
+                'C' => ['min' => 100, 'max' => null, 'share_bp' => 3340, 'qualified_count' => 5, 'group_total_vnd' => 10020000, 'amount_each_vnd' => 2004000],
             ],
         ]);
 
@@ -122,7 +122,7 @@ class AdminReportSnapshotTest extends TestCase
             'email' => 'minhanh@example.com',
             'group_code' => 'A',
             'active_referrals_count' => 18,
-            'payout_vnd' => 88666,
+            'payout_vnd' => 333000,
             'account_status' => 'Gói còn hiệu lực',
             'subscription_ends_at' => Carbon::parse('2026-06-29 23:59:59'),
         ]);
