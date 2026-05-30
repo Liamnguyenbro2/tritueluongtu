@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -81,7 +82,15 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'unique:users,email'],
             'phone' => ['required', 'regex:/^\d{10}$/', 'unique:users,phone'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                Password::min(6)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
+            ],
             'referral_code' => ['nullable', 'string', 'max:50', 'exists:referral_links,code'],
             'accepted_terms' => ['accepted'],
         ], [
@@ -94,6 +103,11 @@ class AuthController extends Controller
             'phone.required' => 'Vui lòng nhập số điện thoại.',
             'phone.regex' => 'Số điện thoại không đúng vui lòng kiểm tra lại.',
             'phone.unique' => 'Số điện thoại này đã được sử dụng.',
+            'password.confirmed' => 'Nhập lại mật khẩu không khớp.',
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
+            'password.mixed' => 'Mật khẩu phải bao gồm chữ hoa và chữ thường.',
+            'password.numbers' => 'Mật khẩu phải có ít nhất 1 chữ số.',
+            'password.symbols' => 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt.',
             'referral_code.exists' => 'Mã giới thiệu không tồn tại.',
             'accepted_terms.accepted' => 'Bạn cần đồng ý điều khoản sử dụng.',
         ]);

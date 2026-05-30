@@ -26,8 +26,8 @@ class AuthAndWalletTest extends TestCase
             'name' => 'New User',
             'email' => 'new@example.com',
             'phone' => '0922222222',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
         ])->assertSessionHasErrors('accepted_terms');
     }
 
@@ -41,8 +41,8 @@ class AuthAndWalletTest extends TestCase
             'email' => 'not-an-email',
             'phone' => '123456',
             'referral_code' => 'UNKNOWN',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
             'accepted_terms' => '1',
         ])->assertRedirect('/register')
             ->assertSessionHasErrors([
@@ -57,12 +57,43 @@ class AuthAndWalletTest extends TestCase
             'name' => 'New User',
             'email' => 'new@example.com',
             'phone' => '0922222222',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
             'accepted_terms' => '1',
         ])->assertRedirect('/register')
             ->assertSessionHasErrors([
                 'username' => 'ID tài khoản chỉ được dùng chữ hoặc số.',
+            ]);
+    }
+
+    public function test_registration_validates_password_strength_rules(): void
+    {
+        $this->seed();
+
+        $this->from('/register')->post('/register', [
+            'username' => 'newuser',
+            'name' => 'New User',
+            'email' => 'new@example.com',
+            'phone' => '0922222222',
+            'password' => 'abc123',
+            'password_confirmation' => 'abc123',
+            'accepted_terms' => '1',
+        ])->assertRedirect('/register')
+            ->assertSessionHasErrors([
+                'password' => 'Mật khẩu phải bao gồm chữ hoa và chữ thường.',
+            ]);
+
+        $this->from('/register')->post('/register', [
+            'username' => 'newuser2',
+            'name' => 'New User',
+            'email' => 'new2@example.com',
+            'phone' => '0933333333',
+            'password' => 'Abc123',
+            'password_confirmation' => 'Abc123',
+            'accepted_terms' => '1',
+        ])->assertRedirect('/register')
+            ->assertSessionHasErrors([
+                'password' => 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt.',
             ]);
     }
 
