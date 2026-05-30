@@ -192,6 +192,9 @@
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.plans.index') }}">
                     <i data-lucide="badge-dollar-sign" class="h-5 w-5 text-emerald-300"></i><span>Quản lý gói</span>
                 </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.reports.index') }}">
+                    <i data-lucide="chart-column-big" class="h-5 w-5 text-fuchsia-300"></i><span>{!! html_entity_decode('Report b&#225;o c&#225;o') !!}</span>
+                </a>
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.notifications.index') }}">
                     <i data-lucide="megaphone" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
                 </a>

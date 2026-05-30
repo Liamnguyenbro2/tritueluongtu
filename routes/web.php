@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminLessonController;
 use App\Http\Controllers\AdminPlanController;
+use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankWebhookController;
@@ -69,6 +70,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/plans', [AdminPlanController::class, 'index'])->name('plans.index');
     Route::get('/plans/{plan}', [AdminPlanController::class, 'show'])->name('plans.show');
     Route::put('/plans/{plan}', [AdminPlanController::class, 'update'])->name('plans.update');
+    Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/{snapshot}/export', [AdminReportController::class, 'export'])->name('reports.export');
     Route::get('/lessons', [AdminLessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons', [AdminLessonController::class, 'store'])->name('lessons.store');
     Route::put('/lessons/{lesson}', [AdminLessonController::class, 'update'])->name('lessons.update');

@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         App\Console\Commands\DebugPoolShare::class,
         App\Console\Commands\DistributePoolShare::class,
+        App\Console\Commands\CaptureAdminReportSnapshot::class,
         App\Console\Commands\ExpireTrials::class,
         App\Console\Commands\PurgeVoiceSamples::class,
     ])
