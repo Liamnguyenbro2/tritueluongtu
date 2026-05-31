@@ -128,6 +128,12 @@ class Plan extends Model
             'Ghi nhận đầy đủ trong lịch sử hóa đơn',
         ];
     }
+
+    public function paymentOrders()
+    {
+        return $this->hasMany(PaymentOrder::class);
+    }
+
     public function allowsPaymentMethod(string $method): bool
     {
         return match ($method) {
@@ -194,7 +200,12 @@ class BankWebhookEvent extends Model
 
 class Wallet extends Model
 {
-    protected $fillable = ['owner_type', 'owner_id', 'type', 'balance_vnd'];
+    protected $fillable = ['owner_type', 'owner_id', 'type', 'balance_vnd', 'is_locked'];
+
+    protected function casts(): array
+    {
+        return ['is_locked' => 'boolean'];
+    }
 
     public function owner()
     {
@@ -250,6 +261,11 @@ class WithdrawalRequest extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 }
 

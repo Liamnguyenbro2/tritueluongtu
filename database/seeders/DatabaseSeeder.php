@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
                 'phone' => '0900000000',
                 'password' => Hash::make('password'),
                 'is_admin' => true,
+                'role' => 'admin',
                 'trial_started_at' => now(),
             ],
         );
@@ -32,14 +33,30 @@ class DatabaseSeeder extends Seeder
             ['email' => 'user@example.com'],
             [
                 'username' => 'nguyenvana',
-                'name' => 'Nguyễn Văn A',
+                'name' => 'Nguyen Van A',
                 'phone' => '0911111111',
                 'password' => Hash::make('password'),
+                'role' => 'user',
                 'trial_started_at' => now(),
             ],
         );
 
-        foreach ([$admin, $user] as $account) {
+        $accountant = User::query()->firstOrCreate(
+            ['email' => 'accountant@example.com'],
+            [
+                'username' => 'accountant',
+                'name' => 'Kế toán',
+                'phone' => '0933333333',
+                'password' => Hash::make('password'),
+                'role' => 'accountant',
+            ],
+        );
+
+        $admin->update(['role' => 'admin', 'is_admin' => true]);
+        $user->update(['role' => 'user']);
+        $accountant->update(['role' => 'accountant', 'is_admin' => false]);
+
+        foreach ([$admin, $user, $accountant] as $account) {
             $account->profile()->updateOrCreate([], [
                 'accepted_terms' => true,
                 'accepted_terms_at' => now(),
@@ -52,52 +69,52 @@ class DatabaseSeeder extends Seeder
         }
 
         Plan::query()->updateOrCreate(['code' => 'monthly'], [
-            'name' => 'Gói Tháng',
-            'description' => 'Phù hợp trải nghiệm nội dung trả phí theo tháng.',
+            'name' => 'Goi Thang',
+            'description' => 'Phu hop trai nghiem noi dung tra phi theo thang.',
             'duration_days' => 30,
             'price_vnd' => 199000,
             'features' => [
-                'Mở quyền kích hoạt các khóa trả phí',
-                'Active từng khóa trong 7 ngày khi cần học',
-                'Ghi nhận đầy đủ trong lịch sử hóa đơn',
+                'Mo quyen kich hoat cac khoa tra phi',
+                'Active tung khoa trong 7 ngay khi can hoc',
+                'Ghi nhan day du trong lich su hoa don',
             ],
         ]);
 
         Plan::query()->updateOrCreate(['code' => 'yearly'], [
-            'name' => 'Gói Năm',
-            'description' => 'Tối ưu chi phí khi sử dụng lâu dài.',
+            'name' => 'Goi Nam',
+            'description' => 'Toi uu chi phi khi su dung lau dai.',
             'duration_days' => 365,
             'price_vnd' => 1500000,
             'features' => [
-                'Mở quyền kích hoạt các khóa trả phí',
-                'Active từng khóa trong 7 ngày khi cần học',
-                'Ghi nhận đầy đủ trong lịch sử hóa đơn',
+                'Mo quyen kich hoat cac khoa tra phi',
+                'Active tung khoa trong 7 ngay khi can hoc',
+                'Ghi nhan day du trong lich su hoa don',
             ],
         ]);
 
         $course = Course::query()->firstOrCreate([
-            'title' => 'Thư viện năng lượng tích cực',
+            'title' => 'Thu vien nang luong tich cuc',
         ], [
-            'description' => '16 nội dung thiền định và phát triển bản thân.',
+            'description' => '16 noi dung thien dinh va phat trien ban than.',
         ]);
 
         $titles = [
-            'Năng Lượng tổng thể',
-            'Tình Yêu & Hạnh Phúc',
-            'Tài Lộc Thịnh Vượng',
-            'Bình An Nội Tâm',
-            'Sức Khỏe Dồi Dào',
-            'Thiền Định Sâu',
-            'Trí Tuệ & Minh Mẫn',
-            'Mối Quan Hệ Tốt Đẹp',
-            'Bảo Vệ & Hòa Giải',
-            'Kết Nối Vũ Trụ',
-            'Khai Mở Tâm Linh',
-            'Thư Giãn & Giảm Stress',
-            'Giấc Ngủ Sâu',
-            'Cân Bằng Luân Xa',
-            'Thành Công & May Mắn',
-            'Năng Lượng Vũ Trụ',
+            'Nang Luong tong the',
+            'Tinh Yeu va Hanh Phuc',
+            'Tai Loc Thinh Vuong',
+            'Binh An Noi Tam',
+            'Suc Khoe Doi Dao',
+            'Thien Dinh Sau',
+            'Tri Tue va Minh Man',
+            'Moi Quan He Tot Dep',
+            'Bao Ve va Hoa Giai',
+            'Ket Noi Vu Tru',
+            'Khai Mo Tam Linh',
+            'Thu Gian va Giam Stress',
+            'Giac Ngu Sau',
+            'Can Bang Luan Xa',
+            'Thanh Cong va May Man',
+            'Nang Luong Vu Tru',
         ];
 
         foreach ($titles as $index => $title) {
@@ -106,7 +123,7 @@ class DatabaseSeeder extends Seeder
                 'position' => $index + 1,
             ], [
                 'title' => $title,
-                'description' => 'Nội dung mẫu cho MVP, có thể thay bằng audio/video thật sau.',
+                'description' => 'Noi dung mau cho MVP, co the thay bang audio/video that sau.',
                 'is_trial' => $index < 3,
                 'duration_minutes' => 12 + $index,
             ]);
@@ -115,8 +132,9 @@ class DatabaseSeeder extends Seeder
         app(WalletLedgerService::class)->ensureSystemWallets();
         app(WalletLedgerService::class)->walletForUser($admin);
         app(WalletLedgerService::class)->walletForUser($user);
+        app(WalletLedgerService::class)->walletForUser($accountant);
 
-        SiteSetting::query()->updateOrCreate(['key' => 'brand_eyebrow'], ['value' => 'Nội dung demo']);
+        SiteSetting::query()->updateOrCreate(['key' => 'brand_eyebrow'], ['value' => 'Noi dung demo']);
         SiteSetting::query()->updateOrCreate(['key' => 'brand_name'], ['value' => 'Demo']);
     }
 }

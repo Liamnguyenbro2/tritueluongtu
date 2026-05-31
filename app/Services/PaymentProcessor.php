@@ -57,6 +57,10 @@ class PaymentProcessor
             $order = $this->createOrder($user->id, $plan->id, (int) $plan->price_vnd, 'wallet');
             $wallet = $this->ledger->walletForUser($user);
 
+            if ($wallet->is_locked) {
+                throw new \RuntimeException('Wallet is locked.');
+            }
+
             $this->ledger->debit($wallet, (int) $plan->price_vnd, 'wallet_payment', $order, "Thanh toán gói {$plan->name} bằng ví số dư");
 
             return $this->complete($order, 'WALLET-'.$order->code);

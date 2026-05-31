@@ -146,7 +146,7 @@
 <div x-show="sidebarOpen" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" @click="sidebarOpen = false"></div>
 
 <aside class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-white/10 bg-[#070815]/90 px-5 py-6 shadow-2xl shadow-black/40 backdrop-blur-2xl transition duration-300 lg:translate-x-0" :class="{ 'translate-x-0': sidebarOpen }">
-    <a href="{{ auth()->check() ? route('dashboard') : route('landing') }}" class="flex items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-white/10">
+    <a href="{{ auth()->check() ? (auth()->user()->isAccountant() ? route('accountant.dashboard') : route('dashboard')) : route('landing') }}" class="flex items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-white/10">
         @if(!empty($brandSettings['logo_url']))
             <img src="{{ $brandSettings['logo_url'] }}" alt="{{ $brandSettings['name'] }}" class="h-12 w-12 rounded-2xl object-cover shadow-glow">
         @else
@@ -162,28 +162,52 @@
 
     <nav class="mt-9 space-y-2">
         @auth
-            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('dashboard') }}">
+            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ auth()->user()->isAccountant() ? route('accountant.dashboard') : route('dashboard') }}">
                 <i data-lucide="layout-dashboard" class="h-5 w-5 text-violet-300"></i><span>Dashboard</span>
             </a>
-            @unless(auth()->user()->is_admin)
-                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('notifications.index') }}">
-                    <i data-lucide="bell-ring" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
+            @if(auth()->user()->isAccountant() && ! auth()->user()->isAdmin())
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.transactions.index') }}">
+                    <i data-lucide="receipt-text" class="h-5 w-5 text-sky-300"></i><span>Giao dịch</span>
                 </a>
-            @endunless
-            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('billing') }}">
-                <i data-lucide="crown" class="h-5 w-5 text-amber-300"></i><span>Nâng cấp</span>
-            </a>
-            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('affiliate.index') }}">
-                <i data-lucide="users-round" class="h-5 w-5 text-fuchsia-300"></i><span>Thành viên</span>
-            </a>
-            <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('wallet') }}">
-                <i data-lucide="wallet" class="h-5 w-5 text-emerald-300"></i><span>Ví số dư</span>
-            </a>
-            @unless(auth()->user()->is_admin)
-                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('transactions.index') }}">
-                    <i data-lucide="receipt-text" class="h-5 w-5 text-sky-300"></i><span>{!! html_entity_decode('L&#7883;ch s&#7917; giao d&#7883;ch') !!}</span>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.withdrawals.index') }}">
+                    <i data-lucide="landmark" class="h-5 w-5 text-rose-300"></i><span>Rút tiền</span>
                 </a>
-            @endunless
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.deposits.index') }}">
+                    <i data-lucide="arrow-down-up" class="h-5 w-5 text-emerald-300"></i><span>Nạp tiền</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.wallets.index') }}">
+                    <i data-lucide="wallet-cards" class="h-5 w-5 text-amber-300"></i><span>Ví khách hàng</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.revenue') }}">
+                    <i data-lucide="chart-no-axes-column-increasing" class="h-5 w-5 text-fuchsia-300"></i><span>Doanh thu</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.reports') }}">
+                    <i data-lucide="file-spreadsheet" class="h-5 w-5 text-cyan-300"></i><span>Báo cáo</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('accountant.audit-logs') }}">
+                    <i data-lucide="clipboard-list" class="h-5 w-5 text-violet-300"></i><span>Audit Log</span>
+                </a>
+            @else
+                @unless(auth()->user()->is_admin)
+                    <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('notifications.index') }}">
+                        <i data-lucide="bell-ring" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
+                    </a>
+                @endunless
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('billing') }}">
+                    <i data-lucide="crown" class="h-5 w-5 text-amber-300"></i><span>Nâng cấp</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('affiliate.index') }}">
+                    <i data-lucide="users-round" class="h-5 w-5 text-fuchsia-300"></i><span>Thành viên</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('wallet') }}">
+                    <i data-lucide="wallet" class="h-5 w-5 text-emerald-300"></i><span>Ví số dư</span>
+                </a>
+                @unless(auth()->user()->is_admin)
+                    <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('transactions.index') }}">
+                        <i data-lucide="receipt-text" class="h-5 w-5 text-sky-300"></i><span>{!! html_entity_decode('L&#7883;ch s&#7917; giao d&#7883;ch') !!}</span>
+                    </a>
+                @endunless
+            @endif
             <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('profile.edit') }}">
                 <i data-lucide="user-round-cog" class="h-5 w-5 text-violet-300"></i><span>Hồ sơ</span>
             </a>
@@ -225,7 +249,7 @@
             <a href="{{ route('profile.edit') }}" class="mb-3 flex items-center gap-3 rounded-2xl p-2 transition hover:bg-white/10">
                 <div class="h-10 w-10 rounded-2xl bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=160&q=80')"></div>
                 <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold">{{ auth()->user()->name }}</p>
+                    <p class="truncate text-sm font-semibold">{{ auth()->user()->isAccountant() ? html_entity_decode('K&#7871; to&#225;n') : auth()->user()->name }}</p>
                     <p class="truncate text-xs text-slate-400">{{ auth()->user()->email }}</p>
                 </div>
             </a>

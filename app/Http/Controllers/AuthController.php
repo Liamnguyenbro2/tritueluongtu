@@ -118,6 +118,7 @@ class AuthController extends Controller
             'email' => $data['email'],
             'phone' => $data['phone'],
             'password' => Hash::make($data['password']),
+            'role' => 'user',
             'trial_started_at' => now(),
         ]);
 
@@ -146,7 +147,7 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('dashboard');
+        return $this->redirectAfterLogin($user);
     }
 
     public function login(Request $request): RedirectResponse
@@ -178,7 +179,7 @@ class AuthController extends Controller
 
             $request->session()->regenerate();
 
-            return redirect()->route('dashboard');
+            return $this->redirectAfterLogin($user);
         }
 
         $attempts = $this->incrementFailedLoginAttempts($attemptKey);
@@ -221,6 +222,19 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('landing');
+    }
+
+    private function redirectAfterLogin(User $user): RedirectResponse
+    {
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.index');
+        }
+
+        if ($user->isAccountant()) {
+            return redirect()->route('accountant.dashboard');
+        }
+
+        return redirect()->route('dashboard');
     }
 
     private function resolveUserFromLogin(string $login): ?User

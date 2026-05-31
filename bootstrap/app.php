@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'not_suspended' => App\Http\Middleware\EnsureAccountIsNotSuspended::class,
             'admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
+            'accountant' => App\Http\Middleware\EnsureUserIsAccountant::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

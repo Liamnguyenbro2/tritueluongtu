@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminLessonController;
 use App\Http\Controllers\AdminPlanController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\AccountantController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankWebhookController;
@@ -85,4 +86,25 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/users/{user}/unlock-bank', [AdminController::class, 'unlockBank'])->name('users.unlock-bank');
     Route::post('/withdrawals/{withdrawal}/approve', [AdminController::class, 'approveWithdrawal'])->name('withdrawals.approve');
     Route::post('/withdrawals/{withdrawal}/reject', [AdminController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
+});
+
+Route::middleware(['auth', 'accountant'])->prefix('accountant')->name('accountant.')->group(function () {
+    Route::get('/', [AccountantController::class, 'dashboard'])->name('dashboard');
+    Route::get('/transactions', [AccountantController::class, 'transactions'])->name('transactions.index');
+    Route::get('/transactions/export/{format}', [AccountantController::class, 'exportTransactions'])->name('transactions.export');
+    Route::get('/transactions/{transaction}', [AccountantController::class, 'transactionShow'])->name('transactions.show');
+    Route::get('/transactions/{transaction}/invoice', [AccountantController::class, 'transactionInvoice'])->name('transactions.invoice');
+    Route::get('/withdrawals', [AccountantController::class, 'withdrawals'])->name('withdrawals.index');
+    Route::post('/withdrawals/{withdrawal}/approve', [AccountantController::class, 'approveWithdrawal'])->name('withdrawals.approve');
+    Route::post('/withdrawals/{withdrawal}/reject', [AccountantController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
+    Route::post('/withdrawals/{withdrawal}/mark-transferred', [AccountantController::class, 'markTransferred'])->name('withdrawals.mark-transferred');
+    Route::post('/withdrawals/{withdrawal}/resend', [AccountantController::class, 'resendTransfer'])->name('withdrawals.resend');
+    Route::get('/deposits', [AccountantController::class, 'deposits'])->name('deposits.index');
+    Route::get('/wallets', [AccountantController::class, 'wallets'])->name('wallets.index');
+    Route::post('/wallets/{user}/adjust', [AccountantController::class, 'adjustWallet'])->name('wallets.adjust');
+    Route::post('/wallets/{user}/toggle-lock', [AccountantController::class, 'toggleWalletLock'])->name('wallets.toggle-lock');
+    Route::get('/revenue', [AccountantController::class, 'revenue'])->name('revenue');
+    Route::get('/reports', [AccountantController::class, 'reports'])->name('reports');
+    Route::get('/reports/export/{format}', [AccountantController::class, 'exportReports'])->name('reports.export');
+    Route::get('/audit-logs', [AccountantController::class, 'auditLogs'])->name('audit-logs');
 });

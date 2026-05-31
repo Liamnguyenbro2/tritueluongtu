@@ -93,6 +93,12 @@ class WalletController extends Controller
 
         $wallet = $wallets->walletForUser($request->user());
 
+        if ($wallet->is_locked) {
+            throw ValidationException::withMessages([
+                'amount_vnd' => 'Ví của bạn đang bị khóa tạm thời.',
+            ]);
+        }
+
         if ($wallet->balance_vnd < (int) $data['amount_vnd']) {
             throw ValidationException::withMessages([
                 'amount_vnd' => 'Số tiền rút không được vượt quá số dư ví hiện có.',

@@ -18,6 +18,7 @@ class User extends Authenticatable
         'phone',
         'password',
         'is_admin',
+        'role',
         'trial_started_at',
     ];
 
@@ -30,6 +31,16 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'trial_started_at' => 'datetime',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->is_admin || $this->role === 'admin';
+    }
+
+    public function isAccountant(): bool
+    {
+        return $this->role === 'accountant';
     }
 
     public function profile()
