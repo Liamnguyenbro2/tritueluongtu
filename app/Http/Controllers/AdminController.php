@@ -415,9 +415,9 @@ class AdminController extends Controller
         return back()->with('status', 'Đã mở quyền sửa tài khoản ngân hàng.');
     }
 
-    public function approveWithdrawal(WithdrawalRequest $withdrawal, WalletLedgerService $wallets): RedirectResponse
+    public function approveWithdrawal(WithdrawalRequest $withdrawal, WalletLedgerService $wallets, \App\Services\TransactionLogService $transactionLogs): RedirectResponse
     {
-        DB::transaction(function () use ($withdrawal, $wallets) {
+        DB::transaction(function () use ($withdrawal, $wallets, $transactionLogs) {
             if ($withdrawal->status !== 'pending') {
                 return;
             }
@@ -433,18 +433,19 @@ class AdminController extends Controller
             }
 
             $withdrawal->update(['status' => 'approved', 'decided_at' => now()]);
+            $transactionLogs->markWithdrawalSuccessful($withdrawal);
         });
 
         return back()->with('status', 'Đã duyệt yêu cầu rút tiền.');
     }
 
-    public function rejectWithdrawal(Request $request, WithdrawalRequest $withdrawal, WalletLedgerService $wallets): RedirectResponse
+    public function rejectWithdrawal(Request $request, WithdrawalRequest $withdrawal, WalletLedgerService $wallets, \App\Services\TransactionLogService $transactionLogs): RedirectResponse
     {
         $data = $request->validate([
             'admin_note' => ['required', 'string', 'max:500'],
         ]);
 
-        DB::transaction(function () use ($withdrawal, $wallets, $data) {
+        DB::transaction(function () use ($withdrawal, $wallets, $data, $transactionLogs) {
             if ($withdrawal->status !== 'pending') {
                 return;
             }
@@ -462,6 +463,8 @@ class AdminController extends Controller
                 'admin_note' => $data['admin_note'],
                 'decided_at' => now(),
             ]);
+
+            $transactionLogs->markWithdrawalFailed($withdrawal, $data['admin_note']);
         });
 
         return back()->with('status', 'Đã từ chối yêu cầu rút tiền.');

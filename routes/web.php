@@ -13,6 +13,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProtectedLessonMediaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserTransactionController;
 use App\Http\Controllers\VoiceSampleController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -52,6 +53,7 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::post('/voice-sample', [VoiceSampleController::class, 'store'])->name('voice-sample.store');
     Route::post('/voice-sample/complete', [VoiceSampleController::class, 'complete'])->name('voice-sample.complete');
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
+    Route::get('/user/transactions', [UserTransactionController::class, 'index'])->name('transactions.index');
     Route::post('/wallet/bank-account', [WalletController::class, 'saveBankAccount'])->name('wallet.bank-account');
     Route::post('/wallet/withdrawals', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
 });
@@ -64,6 +66,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/passwords', [AdminController::class, 'passwords'])->name('passwords');
     Route::post('/passwords', [AdminController::class, 'updateUserPassword'])->name('passwords.update');
     Route::get('/notifications', [AdminAnnouncementController::class, 'index'])->name('notifications.index');
+    Route::put('/notifications/marquee', [AdminAnnouncementController::class, 'updateMarquee'])->name('notifications.marquee.update');
     Route::put('/notifications/fixed', [AdminAnnouncementController::class, 'updateFixed'])->name('notifications.fixed.update');
     Route::post('/notifications/campaigns', [AdminAnnouncementController::class, 'storeCampaign'])->name('notifications.campaigns.store');
     Route::post('/notifications/{announcement}/toggle', [AdminAnnouncementController::class, 'toggle'])->name('notifications.toggle');

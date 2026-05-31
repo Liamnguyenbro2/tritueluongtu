@@ -3,9 +3,10 @@
 namespace App\Services;
 
 use App\Models\PaymentOrder;
-use App\Models\Referral;
 use App\Models\Plan;
+use App\Models\Referral;
 use App\Models\Subscription;
+use App\Models\TransactionLog;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,12 +17,17 @@ class PaymentProcessor
     public function __construct(
         private readonly WalletLedgerService $ledger,
         private readonly ReferralCommissionService $referrals,
+        private readonly TransactionLogService $transactionLogs,
     ) {
     }
 
     public function createOrder(int $userId, int $planId, int $amountVnd, string $paymentMethod = 'bank_qr'): PaymentOrder
     {
-        return PaymentOrder::query()->create([
+        $user = User::query()->findOrFail($userId);
+        $plan = Plan::query()->findOrFail($planId);
+        $transactionType = $this->transactionLogs->determinePlanTransactionType($user);
+
+        $order = PaymentOrder::query()->create([
             'user_id' => $userId,
             'plan_id' => $planId,
             'code' => 'QI'.Str::upper(Str::random(8)),
@@ -30,8 +36,19 @@ class PaymentProcessor
             'metadata' => [
                 'payment_method' => $paymentMethod,
                 'qr' => $paymentMethod === 'bank_qr' ? config('quantum.bank_qr') : null,
+                'transaction_type' => $transactionType,
             ],
         ]);
+
+        $this->transactionLogs->upsertPaymentOrderLog(
+            $order,
+            $transactionType,
+            TransactionLog::STATUS_PENDING,
+            $this->transactionLogs->planTransactionDescription($plan, $transactionType),
+            $this->transactionLogs->paymentMethodNote($order)
+        );
+
+        return $order;
     }
 
     public function payWithWallet(User $user, Plan $plan): PaymentOrder
@@ -79,6 +96,17 @@ class PaymentProcessor
                 'ends_at' => $subscriptionEndsAt,
                 'status' => 'active',
             ]);
+
+            $transactionType = $lockedOrder->metadata['transaction_type']
+                ?? $this->transactionLogs->determinePlanTransactionType($user);
+
+            $this->transactionLogs->upsertPaymentOrderLog(
+                $lockedOrder,
+                $transactionType,
+                TransactionLog::STATUS_SUCCESS,
+                $this->transactionLogs->planTransactionDescription($plan, $transactionType),
+                trim($this->transactionLogs->paymentMethodNote($lockedOrder).' | Mã giao dịch: '.$providerTransactionId)
+            );
 
             Referral::query()->where('referred_id', $user->id)->whereNull('activated_at')->update(['activated_at' => $now]);
 

@@ -77,6 +77,11 @@ class User extends Authenticatable
         return $this->morphOne(Wallet::class, 'owner')->where('type', 'user');
     }
 
+    public function transactionLogs()
+    {
+        return $this->hasMany(TransactionLog::class);
+    }
+
     public function activeSuspension()
     {
         return $this->hasOne(AccountSuspension::class)

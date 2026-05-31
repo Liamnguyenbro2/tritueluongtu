@@ -26,4 +26,12 @@ class SiteSetting extends Model
             'name' => static::getValue('brand_name', 'Năng Lượng'),
         ];
     }
+
+    public static function headerMarqueeText(): string
+    {
+        return static::getValue(
+            'header_marquee_text',
+            'He thong su dung trai nghiem hinh anh va am thanh mo phong trang thai: Alpha, Theta, Deep Relaxation, Focus State.'
+        ) ?? '';
+    }
 }

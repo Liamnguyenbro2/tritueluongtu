@@ -179,6 +179,11 @@
             <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('wallet') }}">
                 <i data-lucide="wallet" class="h-5 w-5 text-emerald-300"></i><span>Ví số dư</span>
             </a>
+            @unless(auth()->user()->is_admin)
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('transactions.index') }}">
+                    <i data-lucide="receipt-text" class="h-5 w-5 text-sky-300"></i><span>{!! html_entity_decode('L&#7883;ch s&#7917; giao d&#7883;ch') !!}</span>
+                </a>
+            @endunless
             <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('profile.edit') }}">
                 <i data-lucide="user-round-cog" class="h-5 w-5 text-violet-300"></i><span>Hồ sơ</span>
             </a>
@@ -234,7 +239,7 @@
     @endauth
 </aside>
 
-@php($headerMarqueeText = 'He thong su dung trai nghiem hinh anh va am thanh mo phong trang thai: Alpha, Theta, Deep Relaxation, Focus State.')
+@php($headerMarqueeText = \App\Models\SiteSetting::headerMarqueeText())
 <div class="relative z-10 min-h-screen max-w-full overflow-x-hidden lg:pl-72">
     <header class="sticky top-0 z-30 border-b border-white/10 bg-night/65 backdrop-blur-2xl">
         <div class="px-4 py-3 sm:px-6 lg:px-10">

@@ -11,6 +11,11 @@ use RuntimeException;
 
 class WalletLedgerService
 {
+    public function __construct(
+        private readonly TransactionLogService $transactionLogs,
+    ) {
+    }
+
     public function ensureSystemWallets(): void
     {
         foreach (['admin', 'tax', 'shared_pool'] as $type) {
@@ -62,7 +67,7 @@ class WalletLedgerService
 
             $lockedWallet->update(['balance_vnd' => $newBalance]);
 
-            return LedgerEntry::query()->create([
+            $entry = LedgerEntry::query()->create([
                 'wallet_id' => $lockedWallet->id,
                 'amount_vnd' => $signedAmount,
                 'direction' => $direction,
@@ -71,6 +76,10 @@ class WalletLedgerService
                 'reference_id' => $reference?->getKey(),
                 'memo' => $memo,
             ]);
+
+            $this->transactionLogs->recordLedgerEntry($entry);
+
+            return $entry;
         });
     }
 }

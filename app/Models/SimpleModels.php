@@ -211,6 +211,11 @@ class LedgerEntry extends Model
 {
     protected $fillable = ['wallet_id', 'amount_vnd', 'direction', 'type', 'reference_type', 'reference_id', 'memo'];
 
+    public function wallet()
+    {
+        return $this->belongsTo(Wallet::class);
+    }
+
     public function reference()
     {
         return $this->morphTo();

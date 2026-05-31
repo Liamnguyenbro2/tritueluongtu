@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Announcement;
+use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,7 @@ class AdminAnnouncementController extends Controller
     {
         return view('admin.notifications', [
             'fixedAnnouncement' => Announcement::fixedNotice(),
+            'headerMarqueeText' => SiteSetting::headerMarqueeText(),
             'campaigns' => Announcement::query()
                 ->where('type', Announcement::TYPE_CAMPAIGN)
                 ->latest()
@@ -24,6 +26,20 @@ class AdminAnnouncementController extends Controller
                 ->limit(50)
                 ->get(),
         ]);
+    }
+
+    public function updateMarquee(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'header_marquee_text' => ['required', 'string', 'max:500'],
+        ], [
+            'header_marquee_text.required' => 'Vui lòng nhập nội dung dòng chữ chạy.',
+            'header_marquee_text.max' => 'Dòng chữ chạy tối đa 500 ký tự.',
+        ]);
+
+        SiteSetting::setValue('header_marquee_text', trim($data['header_marquee_text']));
+
+        return back()->with('status', 'Đã cập nhật dòng chữ chạy trên header.');
     }
 
     public function updateFixed(Request $request): RedirectResponse

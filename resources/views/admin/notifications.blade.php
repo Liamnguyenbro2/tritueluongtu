@@ -24,6 +24,29 @@
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <div class="glass rounded-[32px] p-6 xl:col-span-2">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[.22em] text-sky-200/70">Header</p>
+                    <h2 class="mt-2 text-2xl font-black">Dòng chữ chạy trên header</h2>
+                    <p class="mt-1 text-sm text-slate-400">Nội dung này hiển thị ở thanh marquee phía trên dashboard và các trang trong hệ thống.</p>
+                </div>
+                <i data-lucide="panel-top-open" class="h-6 w-6 text-sky-200"></i>
+            </div>
+
+            <form method="post" action="{{ route('admin.notifications.marquee.update') }}" class="grid gap-4">
+                @csrf
+                @method('put')
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Nội dung text chạy</span>
+                    <textarea class="premium-input min-h-28" name="header_marquee_text" maxlength="500" required>{{ old('header_marquee_text', $headerMarqueeText) }}</textarea>
+                </label>
+                <button class="w-full rounded-2xl bg-gradient-to-r from-sky-400 to-violet-500 px-5 py-4 font-black text-white shadow-glow transition hover:-translate-y-1 sm:w-auto">
+                    Lưu dòng chữ chạy
+                </button>
+            </form>
+        </div>
+
         <div class="glass rounded-[32px] p-6">
             <div class="mb-5 flex items-start justify-between gap-4">
                 <div>
