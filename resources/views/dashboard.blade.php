@@ -16,7 +16,51 @@
     $locked = $lessons->where('locked', true)->count();
 @endphp
 
-<div x-data="{ preview: null, forcedAnnouncement: {{ \Illuminate\Support\Js::from(($pendingAnnouncements ?? collect())->first()) }} }" class="max-w-full overflow-x-hidden space-y-6 sm:space-y-8">
+<div
+    x-data="{
+        preview: null,
+        forcedAnnouncement: {{ \Illuminate\Support\Js::from(($pendingAnnouncements ?? collect())->first()) }},
+        previewAutoLoop: false,
+        previewFullscreen: false,
+        init() {
+            document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
+        },
+        setPreview(lesson) {
+            this.preview = lesson;
+            this.previewFullscreen = false;
+            this.$nextTick(() => this.syncPreviewVideo());
+        },
+        closePreview() {
+            const video = this.$refs.previewVideo;
+            if (video) {
+                video.pause();
+                video.loop = false;
+            }
+
+            this.preview = null;
+            this.previewFullscreen = false;
+        },
+        togglePreviewAutoLoop() {
+            this.previewAutoLoop = !this.previewAutoLoop;
+            this.syncPreviewVideo();
+        },
+        handleFullscreenChange() {
+            const fullscreenElement = document.fullscreenElement;
+            const video = this.$refs.previewVideo;
+            this.previewFullscreen = !!(fullscreenElement && video && (fullscreenElement === video || fullscreenElement.contains(video)));
+            this.syncPreviewVideo();
+        },
+        syncPreviewVideo() {
+            const video = this.$refs.previewVideo;
+            if (!video) {
+                return;
+            }
+
+            video.loop = this.previewAutoLoop && this.previewFullscreen;
+        },
+    }"
+    class="max-w-full overflow-x-hidden space-y-6 sm:space-y-8"
+>
     <div x-show="forcedAnnouncement" x-cloak x-transition.opacity class="fixed inset-0 z-[100] grid place-items-center bg-black/80 p-4 backdrop-blur-xl" @click.self="forcedAnnouncement = null">
         <div x-transition.scale class="glass max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[24px] p-4 sm:rounded-[32px] sm:p-6">
             <div class="flex items-start justify-between gap-4">
@@ -146,7 +190,7 @@
             @foreach($lessons as $lesson)
                 @php $thumb = $lesson['thumbnail_url'] ?: $thumbs[($lesson['position'] - 1) % count($thumbs)]; @endphp
                 <article class="group min-w-0 overflow-hidden rounded-[18px] border border-white/10 bg-white/[.06] shadow-2xl shadow-black/30 backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:border-violet-300/40 hover:shadow-glow sm:rounded-[28px]">
-                    <button type="button" class="block w-full text-left" @click="preview = {{ json_encode($lesson) }}">
+                    <button type="button" class="block w-full text-left" @click='setPreview(@json($lesson))'>
                         <div class="relative aspect-[4/3] overflow-hidden sm:aspect-[16/10]">
                             <img src="{{ $thumb }}" alt="{{ $lesson['title'] }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-110" draggable="false">
                             <div class="absolute inset-0 bg-gradient-to-t from-night via-night/30 to-transparent"></div>
@@ -225,24 +269,46 @@
         </div>
     </section>
 
-    <div x-show="preview" x-cloak x-transition.opacity class="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-xl" @click.self="preview = null">
+    <div x-show="preview" x-cloak x-transition.opacity class="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-xl" @click.self="closePreview()">
         <div x-transition.scale class="glass w-full max-w-lg rounded-[24px] p-4 sm:rounded-[32px] sm:p-6">
             <div class="flex items-start justify-between gap-4 sm:gap-6">
                 <div class="min-w-0">
                     <p class="text-sm text-violet-200">Bạn đang xem trước nội dung </p>
                     <h3 class="break-anywhere mt-2 text-2xl font-black" x-text="preview?.title"></h3>
                 </div>
-                <button class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="preview = null">
+                <button class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="closePreview()">
                     <i data-lucide="x" class="h-5 w-5"></i>
                 </button>
             </div>
             <div class="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-black/25" x-show="preview?.media_url">
                 <template x-if="preview?.media_type === 'video'">
-                    <video class="max-h-[360px] w-full object-contain" controls controlsList="nodownload noplaybackrate" disablepictureinpicture oncontextmenu="return false" :src="preview?.media_url"></video>
+                    <video x-ref="previewVideo" class="max-h-[360px] w-full object-contain" controls controlsList="nodownload noplaybackrate" disablepictureinpicture oncontextmenu="return false" :src="preview?.media_url" @loadedmetadata="syncPreviewVideo()"></video>
                 </template>
                 <template x-if="preview?.media_type !== 'video'">
                     <img class="max-h-[360px] w-full object-cover" :src="preview?.media_url" :alt="preview?.title" draggable="false">
                 </template>
+            </div>
+            <div x-show="preview?.media_type === 'video'" class="mt-4 rounded-[24px] border border-white/10 bg-black/25 p-4">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-slate-100">Tự động lặp lại khi toàn màn hình</p>
+                        <p class="mt-1 text-xs text-slate-400">Bật tùy chọn này để video tự phát lại khi khách đang xem fullscreen.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="inline-flex shrink-0 items-center gap-3 rounded-2xl border px-3 py-2 text-sm font-bold transition"
+                        :class="previewAutoLoop ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-100' : 'border-white/10 bg-white/5 text-slate-200'"
+                        @click="togglePreviewAutoLoop()"
+                    >
+                        <span class="relative inline-flex h-6 w-11 items-center rounded-full transition" :class="previewAutoLoop ? 'bg-emerald-400/30' : 'bg-slate-500/30'">
+                            <span class="h-5 w-5 rounded-full shadow-lg transition" :class="previewAutoLoop ? 'ml-5 bg-emerald-200' : 'ml-1 bg-slate-300'"></span>
+                        </span>
+                        <span x-text="previewAutoLoop ? 'Đã bật' : 'Đang tắt'"></span>
+                    </button>
+                </div>
+                <p class="mt-3 text-xs" :class="previewFullscreen ? 'text-emerald-200' : 'text-slate-500'">
+                    <span x-text="previewFullscreen ? 'Chế độ toàn màn hình đang mở, video sẽ lặp lại theo lựa chọn của bạn.' : 'Tùy chọn này sẽ kích hoạt khi người xem phóng to video toàn màn hình.'"></span>
+                </p>
             </div>
             <p class="mt-4 text-sm text-slate-400" x-show="preview?.description" x-text="preview?.description"></p>
             <div class="mt-6 rounded-[24px] border border-white/10 bg-black/25 p-4">
