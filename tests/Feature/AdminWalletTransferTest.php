@@ -19,6 +19,45 @@ class AdminWalletTransferTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_can_create_accountant_account(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.accountants.store'), [
+                'username' => 'ktnoibo',
+                'name' => 'Ke toan noi bo',
+                'email' => 'ktnoibo@example.com',
+                'phone' => '0988888888',
+                'password' => 'secure-pass-123',
+                'password_confirmation' => 'secure-pass-123',
+            ])
+            ->assertRedirect(route('admin.index'));
+
+        $accountant = User::query()->where('email', 'ktnoibo@example.com')->firstOrFail();
+
+        $this->assertSame('accountant', $accountant->role);
+        $this->assertFalse($accountant->is_admin);
+        $this->assertNotNull($accountant->profile);
+        $this->assertDatabaseHas('referral_links', [
+            'user_id' => $accountant->id,
+        ]);
+        $this->assertDatabaseHas('wallets', [
+            'owner_type' => User::class,
+            'owner_id' => $accountant->id,
+            'type' => 'user',
+        ]);
+
+        $this->post('/logout');
+
+        $this->post('/login', [
+            'login' => 'ktnoibo@example.com',
+            'password' => 'secure-pass-123',
+        ])->assertRedirect(route('accountant.dashboard'));
+    }
+
     public function test_admin_can_transfer_wallet_balance_to_user(): void
     {
         $this->seed();

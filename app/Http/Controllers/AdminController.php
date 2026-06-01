@@ -6,6 +6,7 @@ use App\Models\AccountSuspension;
 use App\Models\LedgerEntry;
 use App\Models\PaymentOrder;
 use App\Models\Referral;
+use App\Models\ReferralLink;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\Wallet;
@@ -42,6 +43,11 @@ class AdminController extends Controller
         return view('admin.index', [
             'users' => $users,
             'search' => $search,
+            'accountants' => User::query()
+                ->where('role', 'accountant')
+                ->orderBy('name')
+                ->limit(12)
+                ->get(),
             'orders' => PaymentOrder::query()->latest()->limit(20)->get(),
             'withdrawals' => WithdrawalRequest::query()->with('user')->latest()->limit(20)->get(),
             'systemWallets' => Wallet::query()->whereNull('owner_type')->whereNull('owner_id')->get(),
@@ -53,6 +59,59 @@ class AdminController extends Controller
                 ->limit(10)
                 ->get() ?? collect(),
         ]); 
+    }
+
+    public function storeAccountant(Request $request, WalletLedgerService $wallets): RedirectResponse
+    {
+        $data = $request->validate([
+            'username' => ['required', 'string', 'min:3', 'max:50', 'alpha_dash', 'unique:users,username'],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'username.required' => 'Vui lòng nhập username cho kế toán.',
+            'username.unique' => 'Username này đã tồn tại.',
+            'name.required' => 'Vui lòng nhập họ tên kế toán.',
+            'email.required' => 'Vui lòng nhập email kế toán.',
+            'email.email' => 'Email kế toán không hợp lệ.',
+            'email.unique' => 'Email này đã tồn tại.',
+            'phone.required' => 'Vui lòng nhập số điện thoại kế toán.',
+            'phone.unique' => 'Số điện thoại này đã tồn tại.',
+            'password.required' => 'Vui lòng nhập mật khẩu cho kế toán.',
+            'password.min' => 'Mật khẩu kế toán phải có ít nhất 8 ký tự.',
+            'password.confirmed' => 'Xác nhận mật khẩu kế toán chưa khớp.',
+        ]);
+
+        $accountant = DB::transaction(function () use ($data, $wallets) {
+            $user = User::query()->create([
+                'username' => $data['username'],
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'password' => Hash::make($data['password']),
+                'is_admin' => false,
+                'role' => 'accountant',
+            ]);
+
+            $user->profile()->updateOrCreate([], [
+                'accepted_terms' => true,
+                'accepted_terms_at' => now(),
+            ]);
+
+            ReferralLink::query()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['code' => $this->generateUniqueReferralCode($user->username)]
+            );
+
+            $wallets->walletForUser($user);
+
+            return $user;
+        });
+
+        return redirect()
+            ->route('admin.index')
+            ->with('status', "Đã tạo tài khoản kế toán {$accountant->email}.");
     }
 
     public function sharedPoolHistory(WalletLedgerService $wallets): View
@@ -482,5 +541,20 @@ class AdminController extends Controller
             ->where('reference_id', $withdrawal->id)
             ->where('type', $type)
             ->first();
+    }
+
+    private function generateUniqueReferralCode(string $username): string
+    {
+        $base = strtoupper(preg_replace('/[^A-Z0-9]/', '', $username)) ?: 'ACCOUNTANT';
+        $base = substr($base, 0, 16);
+        $candidate = $base;
+        $suffix = 1;
+
+        while (ReferralLink::query()->where('code', $candidate)->exists()) {
+            $candidate = substr($base, 0, max(1, 16 - strlen((string) $suffix))).$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

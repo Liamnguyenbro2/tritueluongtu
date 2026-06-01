@@ -83,6 +83,79 @@
         </form>
     </section>
 
+    <section class="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
+        <div class="glass rounded-[32px] p-6">
+            <div class="mb-5 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[.22em] text-cyan-200/70">Accountant Access</p>
+                    <h2 class="mt-2 text-2xl font-black">Tạo tài khoản kế toán</h2>
+                    <p class="mt-1 text-sm text-slate-400">Admin có thể tạo mới tài khoản role <span class="font-semibold text-white">Accountant</span> để đăng nhập vào Financial Dashboard riêng.</p>
+                </div>
+                <i data-lucide="briefcase-business" class="h-6 w-6 text-cyan-200"></i>
+            </div>
+
+            <form method="post" action="{{ route('admin.accountants.store') }}" class="grid gap-4 md:grid-cols-2">
+                @csrf
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Username</span>
+                    <input class="premium-input" name="username" value="{{ old('username') }}" required>
+                </label>
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Họ tên</span>
+                    <input class="premium-input" name="name" value="{{ old('name') }}" required>
+                </label>
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Email</span>
+                    <input class="premium-input" name="email" type="email" value="{{ old('email') }}" required>
+                </label>
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Số điện thoại</span>
+                    <input class="premium-input" name="phone" value="{{ old('phone') }}" required>
+                </label>
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Mật khẩu</span>
+                    <input class="premium-input" name="password" type="password" required>
+                </label>
+                <label class="grid gap-2">
+                    <span class="text-sm text-slate-400">Xác nhận mật khẩu</span>
+                    <input class="premium-input" name="password_confirmation" type="password" required>
+                </label>
+                <div class="md:col-span-2 flex justify-end">
+                    <button class="rounded-2xl bg-gradient-to-r from-cyan-400 to-violet-500 px-5 py-4 font-black text-white shadow-glow transition hover:-translate-y-1">
+                        Tạo tài khoản kế toán
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="glass rounded-[32px] p-6">
+            <div class="mb-5 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[.22em] text-cyan-200/70">Accountant List</p>
+                    <h2 class="mt-2 text-2xl font-black">Tài khoản kế toán hiện có</h2>
+                    <p class="mt-1 text-sm text-slate-400">Theo dõi nhanh các email đã được cấp quyền accountant.</p>
+                </div>
+                <span class="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-slate-200">
+                    {{ $accountants->count() }} tài khoản
+                </span>
+            </div>
+
+            <div class="space-y-3">
+                @forelse($accountants as $accountant)
+                    <div class="rounded-[24px] border border-white/10 bg-black/20 p-4">
+                        <p class="font-semibold text-white">{{ $accountant->name }}</p>
+                        <p class="mt-1 text-sm text-slate-400">{{ $accountant->email }}</p>
+                        <p class="mt-2 text-xs uppercase tracking-[.18em] text-cyan-200/80">{{ $accountant->username }}</p>
+                    </div>
+                @empty
+                    <div class="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-6 text-sm text-slate-400">
+                        Chưa có tài khoản kế toán nào.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    </section>
+
     <section class="grid gap-6 xl:grid-cols-2">
         <div class="glass rounded-[32px] p-6">
             <div class="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
