@@ -62,6 +62,12 @@
                 <i data-lucide="log-in" class="h-5 w-5"></i> Đăng nhập
             </button>
         </form>
+        <p class="mt-4 text-center text-sm text-slate-400">
+            Chưa có tài khoản?
+            <a href="{{ route('register') }}" class="ml-1 cursor-pointer font-medium text-violet-300 transition hover:text-fuchsia-300 hover:underline">
+                Đăng ký ngay
+            </a>
+        </p>
     </div>
     <div class="hidden overflow-hidden rounded-[36px] border border-white/10 bg-white/[.06] shadow-glow backdrop-blur-2xl lg:block">
         <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1200&q=80" alt="Meditation" class="h-[520px] w-full object-cover opacity-80">

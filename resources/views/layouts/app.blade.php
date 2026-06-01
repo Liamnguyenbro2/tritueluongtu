@@ -122,6 +122,23 @@
                 word-break: break-word;
             }
         }
+        .sidebar-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+        }
+        .sidebar-menu-container {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding-right: 4px;
+        }
+        .sidebar-footer {
+            flex-shrink: 0;
+            padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+        }
         img, video {
             -webkit-user-drag: none;
         }
@@ -145,8 +162,8 @@
 
 <div x-show="sidebarOpen" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" @click="sidebarOpen = false"></div>
 
-<aside class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-white/10 bg-[#070815]/90 px-5 py-6 shadow-2xl shadow-black/40 backdrop-blur-2xl transition duration-300 lg:translate-x-0" :class="{ 'translate-x-0': sidebarOpen }">
-    <a href="{{ auth()->check() ? (auth()->user()->isAccountant() ? route('accountant.dashboard') : route('dashboard')) : route('landing') }}" class="flex items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-white/10">
+<aside class="sidebar-shell fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] -translate-x-full overflow-hidden border-r border-white/10 bg-[#070815]/90 px-4 py-5 shadow-2xl shadow-black/40 backdrop-blur-2xl transition duration-300 lg:w-72 lg:max-w-none lg:translate-x-0 lg:px-5 lg:py-6" :class="{ 'translate-x-0': sidebarOpen }">
+    <a href="{{ auth()->check() ? (auth()->user()->isAccountant() ? route('accountant.dashboard') : route('dashboard')) : route('landing') }}" class="flex flex-shrink-0 items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-white/10">
         @if(!empty($brandSettings['logo_url']))
             <img src="{{ $brandSettings['logo_url'] }}" alt="{{ $brandSettings['name'] }}" class="h-12 w-12 rounded-2xl object-cover shadow-glow">
         @else
@@ -160,7 +177,8 @@
         </div>
     </a>
 
-    <nav class="mt-9 space-y-2">
+    <div class="sidebar-menu-container mt-6 lg:mt-9">
+    <nav class="space-y-2">
         @auth
             <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ auth()->user()->isAccountant() ? route('accountant.dashboard') : route('dashboard') }}">
                 <i data-lucide="layout-dashboard" class="h-5 w-5 text-violet-300"></i><span>Dashboard</span>
@@ -243,9 +261,11 @@
             </a>
         @endauth
     </nav>
+    </div>
 
     @auth
-        <div class="absolute bottom-5 left-5 right-5 rounded-[24px] border border-violet-400/20 bg-violet-500/10 p-4 shadow-glow">
+        <div class="sidebar-footer mt-4">
+            <div class="rounded-[24px] border border-violet-400/20 bg-violet-500/10 p-4 shadow-glow">
             <a href="{{ route('profile.edit') }}" class="mb-3 flex items-center gap-3 rounded-2xl p-2 transition hover:bg-white/10">
                 <div class="h-10 w-10 rounded-2xl bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=160&q=80')"></div>
                 <div class="min-w-0">
@@ -259,6 +279,7 @@
                     <i data-lucide="log-out" class="h-4 w-4"></i> Đăng xuất
                 </button>
             </form>
+            </div>
         </div>
     @endauth
 </aside>

@@ -135,6 +135,12 @@
                 <i data-lucide="user-plus" class="h-5 w-5"></i> Tạo tài khoản
             </button>
         </form>
+        <p class="mt-4 text-center text-sm text-slate-400">
+            Bạn đã có tài khoản?
+            <a href="{{ route('login') }}" class="ml-1 cursor-pointer font-medium text-violet-300 transition hover:text-fuchsia-300 hover:underline">
+                Đăng nhập
+            </a>
+        </p>
     </div>
 </section>
 
