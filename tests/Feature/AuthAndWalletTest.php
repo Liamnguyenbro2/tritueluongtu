@@ -62,7 +62,7 @@ class AuthAndWalletTest extends TestCase
             'accepted_terms' => '1',
         ])->assertRedirect('/register')
             ->assertSessionHasErrors([
-                'username' => 'ID tài khoản chỉ được dùng chữ hoặc số.',
+                'username' => 'ID tài khoản chỉ được dùng chữ, số, dấu chấm hoặc dấu gạch dưới.',
             ]);
     }
 
@@ -119,6 +119,63 @@ class AuthAndWalletTest extends TestCase
             ->assertJson([
                 'found' => false,
             ]);
+    }
+
+    public function test_registration_email_lookup_reports_existing_and_available_addresses(): void
+    {
+        $this->seed();
+
+        $this->getJson(route('register.email.lookup', ['email' => 'user@example.com']))
+            ->assertOk()
+            ->assertJson([
+                'exists' => true,
+            ]);
+
+        $this->getJson(route('register.email.lookup', ['email' => 'fresh@example.com']))
+            ->assertOk()
+            ->assertJson([
+                'exists' => false,
+            ]);
+    }
+
+    public function test_registration_rejects_duplicate_email_even_with_different_casing(): void
+    {
+        $this->seed();
+
+        $this->from('/register')->post('/register', [
+            'username' => 'newuser',
+            'name' => 'New User',
+            'email' => 'USER@EXAMPLE.COM',
+            'phone' => '0922222222',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
+            'accepted_terms' => '1',
+        ])->assertRedirect('/register')
+            ->assertSessionHasErrors([
+                'email' => 'Email này đã được sử dụng.',
+            ]);
+
+        $this->assertSame(1, User::query()->whereRaw('LOWER(email) = ?', ['user@example.com'])->count());
+    }
+
+    public function test_registration_stores_email_in_lowercase(): void
+    {
+        $this->seed();
+
+        $this->post('/register', [
+            'username' => 'newuser',
+            'name' => 'New User',
+            'email' => 'NewUser@Example.COM',
+            'phone' => '0922222222',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
+            'accepted_terms' => '1',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertDatabaseHas('users', [
+            'username' => 'newuser',
+            'email' => 'newuser@example.com',
+        ]);
     }
 
     public function test_withdrawal_requires_minimum_amount(): void

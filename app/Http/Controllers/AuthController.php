@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\WalletLedgerService;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,20 @@ class AuthController extends Controller
     private const LOGIN_SUSPEND_AFTER = 10;
     private const LOGIN_LOCK_MINUTES = 15;
     private const LOGIN_ATTEMPT_DECAY_HOURS = 24;
+    private const RESERVED_USERNAMES = [
+        'admin',
+        'administrator',
+        'support',
+        'root',
+        'system',
+        'mod',
+        'moderator',
+        'staff',
+        'api',
+        'login',
+        'register',
+        'dashboard',
+    ];
 
     public function showLogin(): View
     {
@@ -55,14 +70,44 @@ class AuthController extends Controller
         ]);
     }
 
+    public function lookupEmail(Request $request): JsonResponse
+    {
+        $email = Str::lower(trim((string) $request->query('email', '')));
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['exists' => false]);
+        }
+
+        return response()->json([
+            'exists' => User::query()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->exists(),
+        ]);
+    }
+
+    public function lookupUsername(Request $request): JsonResponse
+    {
+        $username = $this->normalizeUsername((string) $request->query('username', ''));
+
+        if ($username === '' || ! preg_match('/^[a-z0-9._]{4,30}$/', $username)) {
+            return response()->json(['exists' => false]);
+        }
+
+        return response()->json([
+            'exists' => $this->usernameExists($username) || in_array($username, self::RESERVED_USERNAMES, true),
+        ]);
+    }
+
     public function register(Request $request, WalletLedgerService $wallets): RedirectResponse
     {
         $referralCode = Str::upper(trim((string) $request->input('referral_code')));
+        $normalizedUsername = $this->normalizeUsername((string) $request->input('username'));
+        $normalizedEmail = Str::lower(trim((string) $request->input('email')));
 
         $request->merge([
-            'username' => trim((string) $request->input('username')),
+            'username' => $normalizedUsername,
             'name' => trim((string) $request->input('name')),
-            'email' => trim((string) $request->input('email')),
+            'email' => $normalizedEmail,
             'phone' => trim((string) $request->input('phone')),
             'referral_code' => $referralCode === '' ? null : $referralCode,
         ]);
@@ -71,10 +116,18 @@ class AuthController extends Controller
             'username' => [
                 'required',
                 'string',
-                'max:50',
-                'regex:/^[A-Za-z0-9]+$/',
+                'min:4',
+                'max:30',
+                'regex:/^[a-z0-9._]+$/',
                 function (string $attribute, mixed $value, \Closure $fail) {
-                    if (User::query()->whereRaw('LOWER(username) = ?', [Str::lower((string) $value)])->exists()) {
+                    $normalized = $this->normalizeUsername((string) $value);
+
+                    if (in_array($normalized, self::RESERVED_USERNAMES, true)) {
+                        $fail('ID này đã tồn tại.');
+                        return;
+                    }
+
+                    if ($this->usernameExists($normalized)) {
                         $fail('ID này đã tồn tại.');
                     }
                 },
@@ -95,8 +148,9 @@ class AuthController extends Controller
             'accepted_terms' => ['accepted'],
         ], [
             'username.required' => 'Vui lòng nhập ID tài khoản.',
-            'username.regex' => 'ID tài khoản chỉ được dùng chữ hoặc số.',
-            'username.max' => 'ID tài khoản tối đa 50 ký tự.',
+            'username.min' => 'ID tài khoản phải có ít nhất 4 ký tự.',
+            'username.regex' => 'ID tài khoản chỉ được dùng chữ, số, dấu chấm hoặc dấu gạch dưới.',
+            'username.max' => 'ID tài khoản tối đa 30 ký tự.',
             'email.required' => 'Vui lòng nhập email.',
             'email.email' => 'Email phải đúng định dạng có @.',
             'email.unique' => 'Email này đã được sử dụng.',
@@ -112,26 +166,42 @@ class AuthController extends Controller
             'accepted_terms.accepted' => 'Bạn cần đồng ý điều khoản sử dụng.',
         ]);
 
-        $user = User::query()->create([
-            'username' => $data['username'],
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'],
-            'password' => Hash::make($data['password']),
-            'role' => 'user',
-            'trial_started_at' => now(),
-        ]);
+        try {
+            $user = User::query()->create([
+                'username' => $data['username'],
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'password' => Hash::make($data['password']),
+                'role' => 'user',
+                'trial_started_at' => now(),
+            ]);
 
-        UserProfile::query()->create([
-            'user_id' => $user->id,
-            'accepted_terms' => true,
-            'accepted_terms_at' => now(),
-        ]);
+            UserProfile::query()->create([
+                'user_id' => $user->id,
+                'accepted_terms' => true,
+                'accepted_terms_at' => now(),
+            ]);
 
-        ReferralLink::query()->create([
-            'user_id' => $user->id,
-            'code' => Str::upper($user->username).Str::upper(Str::random(4)),
-        ]);
+            ReferralLink::query()->create([
+                'user_id' => $user->id,
+                'code' => $this->generateUniqueReferralCode($user->username),
+            ]);
+        } catch (QueryException) {
+            $errors = [];
+
+            if ($this->usernameExists($normalizedUsername) || in_array($normalizedUsername, self::RESERVED_USERNAMES, true)) {
+                $errors['username'] = 'ID này đã tồn tại.';
+            }
+
+            if (User::query()->whereRaw('LOWER(email) = ?', [$normalizedEmail])->exists()) {
+                $errors['email'] = 'Email này đã được sử dụng.';
+            }
+
+            return back()
+                ->withErrors($errors ?: ['username' => 'Không thể tạo tài khoản với dữ liệu hiện tại.'])
+                ->withInput($request->except(['password', 'password_confirmation']));
+        }
 
         $refCode = $data['referral_code'] ?: config('quantum.default_referral_code');
         $referrerLink = ReferralLink::query()->where('code', $refCode)->first();
@@ -318,5 +388,32 @@ class AuthController extends Controller
             'reason' => $suspension->reason,
             'ends_at' => $suspension->ends_at?->format('d/m/Y H:i'),
         ];
+    }
+
+    private function normalizeUsername(string $username): string
+    {
+        return Str::lower(trim($username));
+    }
+
+    private function usernameExists(string $username): bool
+    {
+        return User::query()
+            ->whereRaw('LOWER(username) = ?', [Str::lower($username)])
+            ->exists();
+    }
+
+    private function generateUniqueReferralCode(string $username): string
+    {
+        $base = strtoupper(preg_replace('/[^A-Z0-9]/', '', $username)) ?: 'USER';
+        $base = substr($base, 0, 16);
+        $candidate = $base;
+        $suffix = 1;
+
+        while (ReferralLink::query()->where('code', $candidate)->exists()) {
+            $candidate = substr($base, 0, max(1, 16 - strlen((string) $suffix))).$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

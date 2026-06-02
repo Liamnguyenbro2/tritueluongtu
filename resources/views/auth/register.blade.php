@@ -13,10 +13,24 @@
                 <i data-lucide="gift" class="h-8 w-8"></i>
             </div>
         </div>
-        <form method="post" action="{{ route('register') }}" class="grid gap-4 sm:grid-cols-2">
+        <form method="post" action="{{ route('register') }}" class="grid gap-4 sm:grid-cols-2" data-register-form>
             @csrf
             <label class="grid gap-2">
-                <input class="premium-input" name="username" inputmode="latin" autocomplete="username" pattern="[A-Za-z0-9]+" maxlength="50" placeholder="ID tài khoản" value="{{ old('username') }}" required>
+                <input
+                    class="premium-input"
+                    name="username"
+                    inputmode="latin"
+                    autocomplete="username"
+                    pattern="[A-Za-z0-9._]{4,30}"
+                    minlength="4"
+                    maxlength="30"
+                    placeholder="ID tài khoản"
+                    value="{{ old('username') }}"
+                    required
+                    data-username-input
+                    data-username-check-url="{{ route('register.username.lookup') }}"
+                >
+                <span class="hidden px-1 text-xs font-semibold text-slate-400 transition-colors duration-300" data-username-status></span>
                 @error('username')
                     <span class="px-1 text-xs font-semibold text-rose-200">{{ $message }}</span>
                 @enderror
@@ -28,7 +42,18 @@
                 @enderror
             </label>
             <label class="grid gap-2">
-                <input class="premium-input" name="email" type="email" autocomplete="email" placeholder="Email" value="{{ old('email') }}" required>
+                <input
+                    class="premium-input"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="Email"
+                    value="{{ old('email') }}"
+                    required
+                    data-email-input
+                    data-email-check-url="{{ route('register.email.lookup') }}"
+                >
+                <span class="hidden px-1 text-xs font-semibold text-slate-400 transition-colors duration-300" data-email-status></span>
                 @error('email')
                     <span class="px-1 text-xs font-semibold text-rose-200">{{ $message }}</span>
                 @enderror
@@ -131,7 +156,7 @@
             @error('accepted_terms')
                 <p class="px-1 text-xs font-semibold text-rose-200 sm:col-span-2">{{ $message }}</p>
             @enderror
-            <button class="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1 sm:col-span-2">
+            <button class="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2" data-register-submit>
                 <i data-lucide="user-plus" class="h-5 w-5"></i> Tạo tài khoản
             </button>
         </form>
@@ -145,6 +170,207 @@
 </section>
 
 <script>
+    (() => {
+        const form = document.querySelector('[data-register-form]');
+        const submitButton = document.querySelector('[data-register-submit]');
+        const usernameInput = document.querySelector('[data-username-input]');
+        const usernameStatus = document.querySelector('[data-username-status]');
+        const emailInput = document.querySelector('[data-email-input]');
+        const emailStatus = document.querySelector('[data-email-status]');
+
+        if (!form || !submitButton || !usernameInput || !usernameStatus || !emailInput || !emailStatus) {
+            return;
+        }
+
+        let usernameState = 'idle';
+        let emailState = 'idle';
+        let usernameTimer = null;
+        let emailTimer = null;
+        let usernameController = null;
+        let emailController = null;
+
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const usernamePattern = /^[a-z0-9._]{4,30}$/;
+        const reservedUsernames = new Set([
+            'admin',
+            'administrator',
+            'support',
+            'root',
+            'system',
+            'mod',
+            'moderator',
+            'staff',
+            'api',
+            'login',
+            'register',
+            'dashboard',
+        ]);
+
+        const updateSubmitState = () => {
+            const blockedStates = new Set(['checking', 'exists', 'reserved']);
+            submitButton.disabled = blockedStates.has(usernameState) || blockedStates.has(emailState);
+        };
+
+        const paintStatus = (node, text, tone) => {
+            node.textContent = text;
+            node.classList.remove('hidden', 'text-slate-400', 'text-emerald-300', 'text-rose-300');
+
+            if (tone === 'success') {
+                node.classList.add('text-emerald-300');
+            } else if (tone === 'error') {
+                node.classList.add('text-rose-300');
+            } else {
+                node.classList.add('text-slate-400');
+            }
+        };
+
+        const clearStatus = (node) => {
+            node.textContent = '';
+            node.classList.add('hidden');
+            node.classList.remove('text-slate-400', 'text-emerald-300', 'text-rose-300');
+        };
+
+        const checkUsername = async () => {
+            const username = usernameInput.value.trim().toLowerCase();
+            usernameInput.value = username;
+            usernameController?.abort();
+
+            if (!username) {
+                usernameState = 'idle';
+                clearStatus(usernameStatus);
+                updateSubmitState();
+                return;
+            }
+
+            if (!usernamePattern.test(username)) {
+                usernameState = 'invalid';
+                paintStatus(usernameStatus, 'ID phải dài 4-30 ký tự và chỉ gồm chữ, số, dấu chấm hoặc dấu gạch dưới.', 'error');
+                updateSubmitState();
+                return;
+            }
+
+            if (reservedUsernames.has(username)) {
+                usernameState = 'reserved';
+                paintStatus(usernameStatus, '❌ ID tài khoản này không được phép sử dụng', 'error');
+                updateSubmitState();
+                return;
+            }
+
+            usernameState = 'checking';
+            paintStatus(usernameStatus, 'Đang kiểm tra...', 'muted');
+            updateSubmitState();
+            usernameController = new AbortController();
+
+            try {
+                const url = new URL(usernameInput.dataset.usernameCheckUrl, window.location.origin);
+                url.searchParams.set('username', username);
+
+                const response = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    signal: usernameController.signal,
+                });
+                const data = await response.json();
+
+                if (data.exists) {
+                    usernameState = 'exists';
+                    paintStatus(usernameStatus, '❌ ID tài khoản đã tồn tại', 'error');
+                } else {
+                    usernameState = 'available';
+                    paintStatus(usernameStatus, '✅ ID tài khoản có thể sử dụng', 'success');
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    usernameState = 'error';
+                    paintStatus(usernameStatus, 'Không thể kiểm tra ID tài khoản lúc này.', 'error');
+                }
+            }
+
+            updateSubmitState();
+        };
+
+        const checkEmail = async () => {
+            const email = emailInput.value.trim().toLowerCase();
+            emailInput.value = email;
+            emailController?.abort();
+
+            if (!email) {
+                emailState = 'idle';
+                clearStatus(emailStatus);
+                updateSubmitState();
+                return;
+            }
+
+            if (!emailPattern.test(email)) {
+                emailState = 'invalid';
+                paintStatus(emailStatus, 'Email chưa đúng định dạng.', 'error');
+                updateSubmitState();
+                return;
+            }
+
+            emailState = 'checking';
+            paintStatus(emailStatus, 'Đang kiểm tra...', 'muted');
+            updateSubmitState();
+            emailController = new AbortController();
+
+            try {
+                const url = new URL(emailInput.dataset.emailCheckUrl, window.location.origin);
+                url.searchParams.set('email', email);
+
+                const response = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    signal: emailController.signal,
+                });
+                const data = await response.json();
+
+                if (data.exists) {
+                    emailState = 'exists';
+                    paintStatus(emailStatus, '❌ Email đã tồn tại', 'error');
+                } else {
+                    emailState = 'available';
+                    paintStatus(emailStatus, '✅ Email có thể sử dụng', 'success');
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    emailState = 'error';
+                    paintStatus(emailStatus, 'Không thể kiểm tra email lúc này.', 'error');
+                }
+            }
+
+            updateSubmitState();
+        };
+
+        usernameInput.addEventListener('input', () => {
+            window.clearTimeout(usernameTimer);
+            usernameTimer = window.setTimeout(checkUsername, 500);
+        });
+
+        usernameInput.addEventListener('blur', checkUsername);
+
+        emailInput.addEventListener('input', () => {
+            window.clearTimeout(emailTimer);
+            emailTimer = window.setTimeout(checkEmail, 500);
+        });
+
+        emailInput.addEventListener('blur', checkEmail);
+
+        form.addEventListener('submit', (event) => {
+            if (new Set(['checking', 'exists', 'reserved']).has(usernameState)) {
+                event.preventDefault();
+                paintStatus(usernameStatus, 'ID tài khoản đã được sử dụng.', 'error');
+            }
+
+            if (new Set(['checking', 'exists']).has(emailState)) {
+                event.preventDefault();
+                paintStatus(emailStatus, 'Email này đã được sử dụng.', 'error');
+            }
+
+            updateSubmitState();
+        });
+
+        checkUsername();
+        checkEmail();
+    })();
+
     (() => {
         const input = document.querySelector('[data-referral-code]');
         const message = document.querySelector('[data-referral-message]');
