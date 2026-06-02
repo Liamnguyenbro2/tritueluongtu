@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Lesson;
 use App\Models\UserLessonAccess;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProtectedLessonMediaController extends Controller
@@ -26,6 +28,30 @@ class ProtectedLessonMediaController extends Controller
         abort_unless($lesson->media_path, 404);
 
         return $this->stream($lesson->media_path);
+    }
+
+    public function player(Request $request, Lesson $lesson): Response
+    {
+        $this->authorizeLessonMedia($request, $lesson);
+
+        abort_unless($this->isEmbedLesson($lesson), 404);
+
+        $playbackUrl = $this->resolveEmbedPlaybackUrl($lesson);
+        abort_unless($playbackUrl, 404);
+
+        $frameAncestors = implode(' ', config('quantum.media_embed.frame_ancestors', ["'self'"]));
+        $mode = $this->isIframeEmbedUrl($playbackUrl) ? 'iframe' : 'video';
+
+        return response()
+            ->view('lessons.player', [
+                'lesson' => $lesson,
+                'playbackUrl' => $playbackUrl,
+                'mode' => $mode,
+            ])
+            ->header('Content-Security-Policy', "frame-ancestors {$frameAncestors};")
+            ->header('Referrer-Policy', 'strict-origin-when-cross-origin')
+            ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('Cache-Control', 'no-store, private');
     }
 
     private function authorizeLessonMedia(Request $request, Lesson $lesson): void
@@ -71,5 +97,35 @@ class ProtectedLessonMediaController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'X-Robots-Tag' => 'noindex, noarchive, nosnippet',
         ]);
+    }
+
+    private function isEmbedLesson(Lesson $lesson): bool
+    {
+        return $lesson->video_source_type === 'embed' && filled($lesson->embed_url);
+    }
+
+    private function resolveEmbedPlaybackUrl(Lesson $lesson): ?string
+    {
+        $url = trim((string) $lesson->embed_url);
+
+        if ($url === '') {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        $host = Str::lower((string) ($parts['host'] ?? ''));
+
+        if (! in_array($host, config('quantum.media_embed.allowed_hosts', []), true)) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    private function isIframeEmbedUrl(string $url): bool
+    {
+        $path = Str::lower((string) parse_url($url, PHP_URL_PATH));
+
+        return ! Str::endsWith($path, ['.mp4', '.webm', '.ogg', '.m4v', '.mov']);
     }
 }

@@ -11,6 +11,18 @@ return [
         'account_no' => env('BANK_QR_ACCOUNT_NO'),
         'account_name' => env('BANK_QR_ACCOUNT_NAME'),
     ],
+    'media_embed' => [
+        'allowed_hosts' => [
+            'media.tritueluongtu.com',
+        ],
+        'frame_ancestors' => [
+            "'self'",
+            'https://tritueluongtu.com',
+            'https://www.tritueluongtu.com',
+            'http://127.0.0.1:8001',
+            'http://localhost:8001',
+        ],
+    ],
     'allocation' => [
         'affiliate' => 30,
         'vat' => 10,

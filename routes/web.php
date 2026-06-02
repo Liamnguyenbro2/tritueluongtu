@@ -54,6 +54,7 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::post('/lessons/{lesson}/toggle', [DashboardController::class, 'toggle'])->name('lessons.toggle');
     Route::get('/lessons/{lesson}/thumbnail', [ProtectedLessonMediaController::class, 'thumbnail'])->name('lessons.thumbnail');
     Route::get('/lessons/{lesson}/media', [ProtectedLessonMediaController::class, 'media'])->name('lessons.media');
+    Route::get('/lessons/{lesson}/player', [ProtectedLessonMediaController::class, 'player'])->name('lessons.player');
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing/orders', [BillingController::class, 'store'])->name('billing.orders.store');
     Route::get('/billing/orders/{order}', [BillingController::class, 'show'])->name('billing.orders.show');

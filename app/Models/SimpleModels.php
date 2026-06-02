@@ -88,6 +88,8 @@ class Lesson extends Model
         'thumbnail_path',
         'media_type',
         'media_path',
+        'video_source_type',
+        'embed_url',
         'is_trial',
         'duration_minutes',
     ];

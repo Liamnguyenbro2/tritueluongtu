@@ -284,7 +284,16 @@
                 <template x-if="preview?.media_type === 'video'">
                     <video x-ref="previewVideo" class="max-h-[360px] w-full object-contain" controls controlsList="nodownload noplaybackrate" disablepictureinpicture oncontextmenu="return false" :src="preview?.media_url" @loadedmetadata="syncPreviewVideo()"></video>
                 </template>
-                <template x-if="preview?.media_type !== 'video'">
+                <template x-if="preview?.media_type === 'embed-video'">
+                    <iframe
+                        class="aspect-video w-full rounded-[24px] bg-black"
+                        :src="preview?.media_url"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowfullscreen
+                        referrerpolicy="strict-origin-when-cross-origin"
+                    ></iframe>
+                </template>
+                <template x-if="preview?.media_type !== 'video' && preview?.media_type !== 'embed-video'">
                     <img class="max-h-[360px] w-full object-cover" :src="preview?.media_url" :alt="preview?.title" draggable="false">
                 </template>
             </div>

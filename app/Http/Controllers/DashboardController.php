@@ -49,8 +49,10 @@ class DashboardController extends Controller
                 'title' => $lesson->title,
                 'description' => $lesson->description,
                 'thumbnail_url' => $lesson->thumbnail_path ? route('lessons.thumbnail', $lesson) : null,
-                'media_type' => $lesson->media_type,
-                'media_url' => $lesson->media_path ? route('lessons.media', $lesson) : null,
+                'media_type' => $lesson->video_source_type === 'embed' ? 'embed-video' : $lesson->media_type,
+                'media_url' => $lesson->video_source_type === 'embed'
+                    ? route('lessons.player', $lesson)
+                    : ($lesson->media_path ? route('lessons.media', $lesson) : null),
                 'locked' => ! $isUnlocked,
                 'trial' => $usesTrialFlow,
                 'active' => $isUnlocked,
