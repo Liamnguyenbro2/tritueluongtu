@@ -15,6 +15,7 @@ class DashboardController extends Controller
     public function index(Request $request, AnnouncementFeedService $announcements): View
     {
         $user = $request->user();
+        $hasFullLessonAccess = $user->isAdmin();
 
         $trialExpiresAt = $user->trial_started_at?->copy()->addHours(config('quantum.trial_hours'));
         $trialActive = $trialExpiresAt && now()->lt($trialExpiresAt);
@@ -34,13 +35,13 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('lesson_id');
 
-        $lessons = Lesson::query()->orderBy('position')->get()->map(function (Lesson $lesson) use ($accessByLessonId, $canActivatePaidLessons, $trialActive, $trialExpiresAt) {
+        $lessons = Lesson::query()->orderBy('position')->get()->map(function (Lesson $lesson) use ($accessByLessonId, $canActivatePaidLessons, $trialActive, $trialExpiresAt, $hasFullLessonAccess) {
             $paidAccess = $accessByLessonId->get($lesson->id);
             $paidAccessActive = $paidAccess?->isActive() ?? false;
-            $usesPaidFlow = $canActivatePaidLessons || $paidAccessActive;
+            $usesPaidFlow = $hasFullLessonAccess || $canActivatePaidLessons || $paidAccessActive;
             $usesTrialFlow = $lesson->is_trial && ! $usesPaidFlow;
             $isTrialActive = $usesTrialFlow && $trialActive;
-            $isUnlocked = $usesTrialFlow ? $isTrialActive : $paidAccessActive;
+            $isUnlocked = $hasFullLessonAccess ? true : ($usesTrialFlow ? $isTrialActive : $paidAccessActive);
             $expiresAt = $usesTrialFlow ? $trialExpiresAt : ($paidAccessActive ? $paidAccess->expires_at : null);
 
             return [
@@ -56,7 +57,7 @@ class DashboardController extends Controller
                 'locked' => ! $isUnlocked,
                 'trial' => $usesTrialFlow,
                 'active' => $isUnlocked,
-                'can_activate' => ! $usesTrialFlow && $canActivatePaidLessons,
+                'can_activate' => ! $hasFullLessonAccess && ! $usesTrialFlow && $canActivatePaidLessons,
                 'expires_at' => $expiresAt?->toIso8601String(),
                 'expires_label' => $expiresAt?->format('d/m/Y H:i'),
             ];

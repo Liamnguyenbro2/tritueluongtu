@@ -59,7 +59,7 @@ class ProtectedLessonMediaController extends Controller
         $user = $request->user();
         abort_unless($user, 403);
 
-        if ($user->is_admin) {
+        if ($user->isAdmin()) {
             return;
         }
 

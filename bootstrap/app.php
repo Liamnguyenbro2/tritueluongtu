@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Console\Commands\CaptureAdminReportSnapshot::class,
         App\Console\Commands\ExpireTrials::class,
         App\Console\Commands\PurgeVoiceSamples::class,
+        App\Console\Commands\ResetProductionData::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

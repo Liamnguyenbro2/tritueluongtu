@@ -83,6 +83,26 @@ class AdminLessonManagementTest extends TestCase
             ->assertSee('media.tritueluongtu.com/embed/ngu-sau', false);
     }
 
+    public function test_admin_sees_paid_lessons_as_unlocked_without_subscription(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+        $paidLesson = Lesson::query()->where('is_trial', false)->orderBy('position')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertViewHas('lessons', function ($lessons) use ($paidLesson) {
+                $lesson = $lessons->firstWhere('id', $paidLesson->id);
+
+                return $lesson !== null
+                    && $lesson['locked'] === false
+                    && $lesson['active'] === true
+                    && $lesson['can_activate'] === false;
+            });
+    }
+
     public function test_admin_can_delete_lesson_media_without_removing_lesson(): void
     {
         $this->seed();
