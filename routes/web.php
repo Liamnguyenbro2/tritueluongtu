@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminEmailOtpController;
 use App\Http\Controllers\AdminLessonController;
 use App\Http\Controllers\AdminPlanController;
 use App\Http\Controllers\AdminReportController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankWebhookController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ForgotPasswordOtpController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProtectedLessonMediaController;
 use App\Http\Controllers\ProfileController;
@@ -31,6 +33,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/forgot-password', [ForgotPasswordOtpController::class, 'show'])->name('password.forgot');
+    Route::post('/forgot-password/send-otp', [ForgotPasswordOtpController::class, 'sendOtp'])->name('password.forgot.send-otp');
+    Route::post('/forgot-password/verify-otp', [ForgotPasswordOtpController::class, 'verifyOtp'])->name('password.forgot.verify-otp');
+    Route::post('/forgot-password/reset', [ForgotPasswordOtpController::class, 'reset'])->name('password.forgot.reset');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
@@ -71,6 +77,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('/notifications/fixed', [AdminAnnouncementController::class, 'updateFixed'])->name('notifications.fixed.update');
     Route::post('/notifications/campaigns', [AdminAnnouncementController::class, 'storeCampaign'])->name('notifications.campaigns.store');
     Route::post('/notifications/{announcement}/toggle', [AdminAnnouncementController::class, 'toggle'])->name('notifications.toggle');
+    Route::get('/email-otp', [AdminEmailOtpController::class, 'index'])->name('email-otp.index');
+    Route::put('/email-otp/smtp', [AdminEmailOtpController::class, 'updateSmtp'])->name('email-otp.smtp.update');
+    Route::post('/email-otp/test-connection', [AdminEmailOtpController::class, 'testConnection'])->name('email-otp.smtp.test');
+    Route::post('/email-otp/send-test-email', [AdminEmailOtpController::class, 'sendTestEmail'])->name('email-otp.smtp.send-test');
+    Route::put('/email-otp/template', [AdminEmailOtpController::class, 'updateTemplate'])->name('email-otp.template.update');
+    Route::post('/email-otp/template/restore', [AdminEmailOtpController::class, 'restoreTemplate'])->name('email-otp.template.restore');
     Route::post('/accountants', [AdminController::class, 'storeAccountant'])->name('accountants.store');
     Route::get('/plans', [AdminPlanController::class, 'index'])->name('plans.index');
     Route::get('/plans/{plan}', [AdminPlanController::class, 'show'])->name('plans.show');

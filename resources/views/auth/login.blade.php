@@ -29,6 +29,11 @@
 @endif
 
 @php($loginLock = session('login_lock'))
+@if(session('status'))
+    <div class="mx-auto mb-6 max-w-2xl rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+        {{ session('status') }}
+    </div>
+@endif
 <section class="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[.9fr_1.1fr]">
     <div class="glass rounded-[32px] p-6 sm:p-8">
         <div class="mb-8">
@@ -62,6 +67,11 @@
                 <i data-lucide="log-in" class="h-5 w-5"></i> Đăng nhập
             </button>
         </form>
+        <p class="mt-4 text-center text-sm text-slate-400">
+            <a href="{{ route('password.forgot') }}" class="cursor-pointer font-medium text-violet-300 transition hover:text-fuchsia-300 hover:underline">
+                Quên mật khẩu?
+            </a>
+        </p>
         <p class="mt-4 text-center text-sm text-slate-400">
             Chưa có tài khoản?
             <a href="{{ route('register') }}" class="ml-1 cursor-pointer font-medium text-violet-300 transition hover:text-fuchsia-300 hover:underline">

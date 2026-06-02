@@ -245,6 +245,11 @@
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.notifications.index') }}">
                     <i data-lucide="megaphone" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
                 </a>
+                @if(auth()->user()->is_admin)
+                    <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.email-otp.index') }}">
+                        <i data-lucide="mail-search" class="h-5 w-5 text-sky-300"></i><span>Cấu hình Email OTP</span>
+                    </a>
+                @endif
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.lessons.index') }}">
                     <i data-lucide="folder-pen" class="h-5 w-5 text-amber-300"></i><span>Nội dung học</span>
                 </a>
@@ -689,6 +694,58 @@
         document.querySelectorAll('.header-marquee__item').forEach((item) => {
             item.textContent = marqueeText;
         });
+    })();
+
+    (() => {
+        const navLabelMap = new Map([
+            ['/affiliate', 'Thành viên'],
+            ['/wallet', 'Ví số dư'],
+            ['/profile', 'Hồ sơ'],
+            ['/login', 'Đăng nhập'],
+            ['/register', 'Đăng ký'],
+            ['/admin/email-otp', 'Cấu hình Email OTP'],
+            ['/admin/notifications', 'Thông báo'],
+            ['/admin/plans', 'Quản lý gói'],
+            ['/admin/lessons', 'Nội dung học'],
+            ['/admin/passwords', 'Đổi pass user'],
+        ]);
+
+        navLabelMap.forEach((label, path) => {
+            const anchor = document.querySelector(`aside nav a[href="${path}"] span`);
+
+            if (anchor) {
+                anchor.textContent = label;
+            }
+        });
+
+        const balanceLabel = document.querySelector('header .text-right p.text-xs.text-slate-400');
+        if (balanceLabel) {
+            balanceLabel.textContent = 'Số dư';
+        }
+
+        const notificationPanel = document.querySelector('[x-show="notificationsOpen"]');
+        if (notificationPanel) {
+            const heading = notificationPanel.querySelector('h3');
+            const empty = notificationPanel.querySelector('.max-h-\\[480px\\] .text-center');
+            const footer = notificationPanel.querySelector('.border-t p.text-xs');
+            const markAll = notificationPanel.querySelector('.border-t button');
+
+            if (heading) {
+                heading.textContent = 'Thông báo gần đây';
+            }
+
+            if (empty) {
+                empty.textContent = 'Chưa có thông báo mới.';
+            }
+
+            if (footer) {
+                footer.textContent = 'Hiển thị tối đa 5 thông báo gần nhất.';
+            }
+
+            if (markAll) {
+                markAll.textContent = 'Đã đọc tất cả';
+            }
+        }
     })();
 
     (() => {
