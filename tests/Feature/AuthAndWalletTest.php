@@ -119,6 +119,38 @@ class AuthAndWalletTest extends TestCase
             ->assertJson([
                 'found' => false,
             ]);
+
+        $this->getJson(route('register.referral.lookup', ['ref' => 'admin']))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'name' => 'Admin',
+            ]);
+    }
+
+    public function test_registration_accepts_referrer_username_from_ref_query_parameter(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        $this->post('/register', [
+            'username' => 'newuser',
+            'name' => 'New User',
+            'email' => 'new@example.com',
+            'phone' => '0922222222',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
+            'referral_code' => 'admin',
+            'accepted_terms' => '1',
+        ])->assertRedirect(route('dashboard'));
+
+        $newUser = User::query()->where('email', 'new@example.com')->firstOrFail();
+
+        $this->assertDatabaseHas('referrals', [
+            'referrer_id' => $admin->id,
+            'referred_id' => $newUser->id,
+        ]);
     }
 
     public function test_registration_email_lookup_reports_existing_and_available_addresses(): void

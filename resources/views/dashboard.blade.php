@@ -161,7 +161,7 @@
             </div>
             <p class="mt-3 text-4xl font-black">{{ $locked }}</p>
         </div>
-        <div class="glass col-span-2 min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5 md:col-span-1" x-data="{ copied: false, link: '{{ url('/register?ref='.auth()->user()->referralLink?->code) }}' }">
+        <div class="glass col-span-2 min-w-0 rounded-[24px] p-4 transition hover:-translate-y-1 hover:shadow-glow sm:rounded-[28px] sm:p-5 md:col-span-1" x-data="{ copied: false, link: '{{ url('/register?ref='.auth()->user()->username) }}' }">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-slate-400">Link giới thiệu</p>
                 <i data-lucide="link" class="h-5 w-5 text-violet-300"></i>

@@ -53,20 +53,17 @@ class AuthController extends Controller
 
     public function lookupReferral(Request $request): JsonResponse
     {
-        $code = Str::upper(trim((string) $request->query('code', '')));
+        $reference = trim((string) $request->query('ref', $request->query('code', '')));
 
-        if ($code === '') {
+        if ($reference === '') {
             return response()->json(['found' => false]);
         }
 
-        $link = ReferralLink::query()
-            ->with('user:id,name')
-            ->where('code', $code)
-            ->first();
+        $referrer = $this->resolveReferrerByReference($reference);
 
         return response()->json([
-            'found' => $link !== null,
-            'name' => $link?->user?->name,
+            'found' => $referrer !== null,
+            'name' => $referrer?->name,
         ]);
     }
 
@@ -100,7 +97,7 @@ class AuthController extends Controller
 
     public function register(Request $request, WalletLedgerService $wallets): RedirectResponse
     {
-        $referralCode = Str::upper(trim((string) $request->input('referral_code')));
+        $referralCode = trim((string) $request->input('referral_code'));
         $normalizedUsername = $this->normalizeUsername((string) $request->input('username'));
         $normalizedEmail = Str::lower(trim((string) $request->input('email')));
 
@@ -144,7 +141,16 @@ class AuthController extends Controller
                     ->numbers()
                     ->symbols(),
             ],
-            'referral_code' => ['nullable', 'string', 'max:50', 'exists:referral_links,code'],
+            'referral_code' => [
+                'nullable',
+                'string',
+                'max:50',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if ($value && ! $this->resolveReferrerByReference((string) $value)) {
+                        $fail('Mã giới thiệu không tồn tại.');
+                    }
+                },
+            ],
             'accepted_terms' => ['accepted'],
         ], [
             'username.required' => 'Vui lòng nhập ID tài khoản.',
@@ -204,11 +210,11 @@ class AuthController extends Controller
         }
 
         $refCode = $data['referral_code'] ?: config('quantum.default_referral_code');
-        $referrerLink = ReferralLink::query()->where('code', $refCode)->first();
+        $referrer = $this->resolveReferrerByReference((string) $refCode);
 
-        if ($referrerLink) {
+        if ($referrer) {
             Referral::query()->create([
-                'referrer_id' => $referrerLink->user_id,
+                'referrer_id' => $referrer->id,
                 'referred_id' => $user->id,
             ]);
         }
@@ -400,6 +406,30 @@ class AuthController extends Controller
         return User::query()
             ->whereRaw('LOWER(username) = ?', [Str::lower($username)])
             ->exists();
+    }
+
+    private function resolveReferrerByReference(string $reference): ?User
+    {
+        $normalized = trim($reference);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $byUsername = User::query()
+            ->whereRaw('LOWER(username) = ?', [Str::lower($normalized)])
+            ->first();
+
+        if ($byUsername) {
+            return $byUsername;
+        }
+
+        $link = ReferralLink::query()
+            ->with('user')
+            ->where('code', Str::upper($normalized))
+            ->first();
+
+        return $link?->user;
     }
 
     private function generateUniqueReferralCode(string $username): string
