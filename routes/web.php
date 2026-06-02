@@ -94,6 +94,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('/lessons/{lesson}', [AdminLessonController::class, 'update'])->name('lessons.update');
     Route::post('/lessons/{lesson}/delete-media', [AdminLessonController::class, 'deleteMedia'])->name('lessons.delete-media');
     Route::get('/users/{user}/report', [AdminController::class, 'report'])->name('users.report');
+    Route::put('/users/{user}/basic-info', [AdminController::class, 'updateBasicInfo'])->name('users.basic-info.update');
     Route::post('/users/{user}/suspend', [AdminController::class, 'suspend'])->name('users.suspend');
     Route::post('/users/{user}/unlock', [AdminController::class, 'unlock'])->name('users.unlock');
     Route::post('/users/{user}/unlock-bank', [AdminController::class, 'unlockBank'])->name('users.unlock-bank');

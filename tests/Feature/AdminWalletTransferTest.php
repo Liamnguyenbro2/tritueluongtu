@@ -58,6 +58,58 @@ class AdminWalletTransferTest extends TestCase
         ])->assertRedirect(route('accountant.dashboard'));
     }
 
+    public function test_admin_can_update_basic_user_information_from_report(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->put(route('admin.users.basic-info.update', $user), [
+                'username' => 'tranvancanh',
+                'name' => 'Tran Van Canh',
+                'email' => 'tranvancanh@example.com',
+                'phone' => '0912345678',
+            ])
+            ->assertRedirect();
+
+        $user->refresh();
+
+        $this->assertSame('tranvancanh', $user->username);
+        $this->assertSame('Tran Van Canh', $user->name);
+        $this->assertSame('tranvancanh@example.com', $user->email);
+        $this->assertSame('0912345678', $user->phone);
+    }
+
+    public function test_admin_cannot_update_user_with_duplicate_username_or_email(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+
+        $other = User::query()->create([
+            'username' => 'dupuser2026',
+            'name' => 'Duplicate User',
+            'email' => 'duplicate-user-2026@example.com',
+            'phone' => '0977777777',
+            'password' => Hash::make('password'),
+            'role' => 'user',
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.users.report', $user))
+            ->put(route('admin.users.basic-info.update', $user), [
+                'username' => $other->username,
+                'name' => 'Test Duplicate',
+                'email' => $other->email,
+                'phone' => '0912345678',
+            ])
+            ->assertRedirect(route('admin.users.report', $user))
+            ->assertSessionHasErrors(['username', 'email']);
+    }
+
     public function test_admin_can_transfer_wallet_balance_to_user(): void
     {
         $this->seed();

@@ -19,12 +19,29 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
 
 class AdminController extends Controller
 {
+    private const RESERVED_USERNAMES = [
+        'admin',
+        'administrator',
+        'support',
+        'root',
+        'system',
+        'mod',
+        'moderator',
+        'staff',
+        'api',
+        'login',
+        'register',
+        'dashboard',
+    ];
+
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
@@ -410,6 +427,55 @@ class AdminController extends Controller
         ]);
     }
 
+    public function updateBasicInfo(Request $request, User $user): RedirectResponse
+    {
+        $normalizedUsername = $this->normalizeUsername((string) $request->input('username'));
+        $normalizedEmail = Str::lower(trim((string) $request->input('email')));
+
+        $request->merge([
+            'username' => $normalizedUsername,
+            'name' => trim((string) $request->input('name')),
+            'email' => $normalizedEmail,
+            'phone' => trim((string) $request->input('phone')),
+        ]);
+
+        $data = $request->validate([
+            'username' => [
+                'required',
+                'string',
+                'min:4',
+                'max:30',
+                'regex:/^[a-z0-9._]+$/',
+                Rule::unique('users', 'username')->ignore($user->id),
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (in_array((string) $value, self::RESERVED_USERNAMES, true)) {
+                        $fail('ID tài khoản này không được phép sử dụng.');
+                    }
+                },
+            ],
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['required', 'regex:/^\d{10}$/', Rule::unique('users', 'phone')->ignore($user->id)],
+        ], [
+            'username.required' => 'Vui lòng nhập ID tài khoản.',
+            'username.min' => 'ID tài khoản phải có ít nhất 4 ký tự.',
+            'username.max' => 'ID tài khoản tối đa 30 ký tự.',
+            'username.regex' => 'ID tài khoản chỉ được dùng chữ, số, dấu chấm hoặc dấu gạch dưới.',
+            'username.unique' => 'ID tài khoản đã được sử dụng.',
+            'name.required' => 'Vui lòng nhập họ và tên.',
+            'email.required' => 'Vui lòng nhập email.',
+            'email.email' => 'Email không đúng định dạng.',
+            'email.unique' => 'Email này đã được sử dụng.',
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'phone.regex' => 'Số điện thoại phải gồm đúng 10 chữ số.',
+            'phone.unique' => 'Số điện thoại này đã được sử dụng.',
+        ]);
+
+        $user->update($data);
+
+        return back()->with('status', 'Đã cập nhật thông tin cơ bản của user.');
+    }
+
     private function applyPeriod($query, string $period): void
     {
         $start = match ($period) {
@@ -556,5 +622,10 @@ class AdminController extends Controller
         }
 
         return $candidate;
+    }
+
+    private function normalizeUsername(string $username): string
+    {
+        return Str::lower(trim($username));
     }
 }

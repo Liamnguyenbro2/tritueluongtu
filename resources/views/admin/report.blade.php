@@ -190,6 +190,38 @@
 
         <div class="space-y-6">
             <div class="glass rounded-[32px] p-6">
+                <h2 class="text-2xl font-black">{!! html_entity_decode('Ch&#7881;nh s&#7917;a th&#244;ng tin user') !!}</h2>
+                <p class="mt-2 text-sm text-slate-400">{!! html_entity_decode('Admin c&#243; th&#7875; thay &#273;&#7893;i ID t&#224;i kho&#7843;n, Email, S&#7889; &#273;i&#7879;n tho&#7841;i v&#224; H&#7885; v&#224; t&#234;n c&#7911;a user ngay t&#7841;i &#273;&#226;y.') !!}</p>
+                <form method="post" action="{{ route('admin.users.basic-info.update', $user) }}" class="mt-5 grid gap-4">
+                    @csrf
+                    @method('put')
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="grid gap-2">
+                            <span class="text-sm text-slate-400">{!! html_entity_decode('ID t&#224;i kho&#7843;n') !!}</span>
+                            <input class="premium-input" name="username" value="{{ old('username', $user->username) }}" required>
+                        </label>
+                        <label class="grid gap-2">
+                            <span class="text-sm text-slate-400">Email</span>
+                            <input class="premium-input" type="email" name="email" value="{{ old('email', $user->email) }}" required>
+                        </label>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="grid gap-2">
+                            <span class="text-sm text-slate-400">{!! html_entity_decode('S&#7889; &#273;i&#7879;n tho&#7841;i') !!}</span>
+                            <input class="premium-input" name="phone" value="{{ old('phone', $user->phone) }}" required>
+                        </label>
+                        <label class="grid gap-2">
+                            <span class="text-sm text-slate-400">{!! html_entity_decode('H&#7885; v&#224; t&#234;n') !!}</span>
+                            <input class="premium-input" name="name" value="{{ old('name', $user->name) }}" required>
+                        </label>
+                    </div>
+                    <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black text-white shadow-glow transition hover:-translate-y-1">
+                        {!! html_entity_decode('L&#432;u th&#244;ng tin user') !!}
+                    </button>
+                </form>
+            </div>
+
+            <div class="glass rounded-[32px] p-6">
                 <h2 class="text-2xl font-black">Thu nhập 3 tháng gần đây</h2>
                 <div class="mt-5 overflow-x-auto">
                     <table class="w-full min-w-[360px] text-left text-sm">
