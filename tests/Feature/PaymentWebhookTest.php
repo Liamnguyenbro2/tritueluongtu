@@ -116,7 +116,7 @@ class PaymentWebhookTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_paid_lesson_active_cycle_is_seven_days_and_not_extended_while_active(): void
+    public function test_paid_user_can_toggle_lesson_off_and_on_with_timer_reset(): void
     {
         $this->seed();
         Carbon::setTestNow('2026-05-25 10:00:00');
@@ -138,11 +138,12 @@ class PaymentWebhookTest extends TestCase
 
         Carbon::setTestNow('2026-05-26 10:00:00');
         $this->actingAs($user)->post(route('lessons.toggle', $lesson));
-        $this->assertSame('2026-06-01 10:00:00', $firstAccess->fresh()->expires_at->toDateTimeString());
+        $this->assertNotNull($firstAccess->fresh()->revoked_at);
 
-        Carbon::setTestNow('2026-06-02 10:00:00');
+        Carbon::setTestNow('2026-05-27 10:00:00');
         $this->actingAs($user)->post(route('lessons.toggle', $lesson));
-        $this->assertSame('2026-06-09 10:00:00', $firstAccess->fresh()->expires_at->toDateTimeString());
+        $this->assertNull($firstAccess->fresh()->revoked_at);
+        $this->assertSame('2026-06-03 10:00:00', $firstAccess->fresh()->expires_at->toDateTimeString());
 
         Carbon::setTestNow();
     }

@@ -238,14 +238,7 @@
                                     <span class="relative inline-flex h-5 w-9 items-center rounded-full sm:h-6 sm:w-11 {{ $lesson['locked'] ? 'bg-rose-400/25' : 'bg-emerald-400/30' }}">
                                         <span class="{{ $lesson['locked'] ? 'ml-1 bg-rose-200' : 'ml-4 sm:ml-5 bg-emerald-200' }} h-4 w-4 rounded-full shadow-lg sm:h-5 sm:w-5"></span>
                                     </span>
-                                    {{ $lesson['locked'] ? 'Hết trial' : 'Active' }}
-                                </button>
-                            @elseif($lesson['active'])
-                                <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-3 text-xs font-bold text-emerald-100 sm:gap-3 sm:px-4 sm:text-sm">
-                                    <span class="relative inline-flex h-5 w-9 items-center rounded-full bg-emerald-400/30 sm:h-6 sm:w-11">
-                                        <span class="ml-4 h-4 w-4 rounded-full bg-emerald-200 shadow-lg sm:ml-5 sm:h-5 sm:w-5"></span>
-                                    </span>
-                                    Đang bật
+                                    {{ $lesson['locked'] ? 'Hết trial' : 'Đang bật' }}
                                 </button>
                             @elseif($lesson['locked'] && ! $lesson['can_activate'])
                                 <a class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm" href="{{ route('billing') }}">
@@ -258,7 +251,7 @@
                                         <span class="relative inline-flex h-5 w-9 items-center rounded-full sm:h-6 sm:w-11 {{ $lesson['active'] ? 'bg-emerald-400/30' : 'bg-slate-500/30' }}">
                                             <span class="{{ $lesson['active'] ? 'ml-4 sm:ml-5 bg-emerald-200' : 'ml-1 bg-slate-300' }} h-4 w-4 rounded-full shadow-lg sm:h-5 sm:w-5"></span>
                                         </span>
-                                        {{ $lesson['active'] ? 'Active' : 'Đang tắt' }}
+                                        {{ $lesson['active'] ? 'Đang bật' : 'Đang tắt' }}
                                     </button>
                                 </form>
                             @endif

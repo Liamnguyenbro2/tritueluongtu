@@ -31,7 +31,6 @@ class DashboardController extends Controller
         $accessByLessonId = UserLessonAccess::query()
             ->where('user_id', $user->id)
             ->where('source', 'paid')
-            ->whereNull('revoked_at')
             ->get()
             ->keyBy('lesson_id');
 
@@ -81,11 +80,14 @@ class DashboardController extends Controller
             ->where('user_id', $request->user()->id)
             ->where('lesson_id', $lesson->id)
             ->where('source', 'paid')
-            ->whereNull('revoked_at')
             ->first();
 
         if ($existingAccess?->isActive()) {
-            return back()->with('status', "Nội dung {$lesson->title} đang Active.");
+            $existingAccess->update([
+                'revoked_at' => now(),
+            ]);
+
+            return back()->with('status', html_entity_decode('&#272;&#227; t&#7855;t n&#7897;i dung ').$lesson->title.'.');
         }
 
         UserLessonAccess::query()->updateOrCreate(
@@ -101,6 +103,6 @@ class DashboardController extends Controller
             ]
         );
 
-        return back()->with('status', "Đã kích hoạt nội dung {$lesson->title} trong 7 ngày.");
+        return back()->with('status', html_entity_decode('&#272;&#227; b&#7853;t n&#7897;i dung ').$lesson->title.html_entity_decode(' trong 7 ng&#224;y.'));
     }
 }
