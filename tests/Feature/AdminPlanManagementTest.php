@@ -58,6 +58,9 @@ class AdminPlanManagementTest extends TestCase
         $this->assertFalse($plan->wallet_enabled);
         $this->assertNotNull($plan->bank_qr_image_path);
         Storage::disk('public')->assertExists($plan->bank_qr_image_path);
+        $this->actingAs($admin)
+            ->get($plan->bankQrImageUrl())
+            ->assertOk();
     }
 
     public function test_billing_page_uses_plan_copy_and_renders_qr_image_when_enabled(): void

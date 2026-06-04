@@ -8,9 +8,11 @@ use App\Services\PaymentProcessor;
 use App\Services\WalletLedgerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BillingController extends Controller
 {
@@ -25,6 +27,22 @@ class BillingController extends Controller
                 ->limit(10)
                 ->get(),
             'wallet' => $wallets->walletForUser($request->user()),
+        ]);
+    }
+
+    public function qrImage(Request $request, Plan $plan): StreamedResponse
+    {
+        abort_unless($request->user(), 403);
+        abort_unless($plan->bank_qr_enabled && $plan->bank_qr_image_path, 404);
+
+        $disk = Storage::disk('public');
+        abort_unless($disk->exists($plan->bank_qr_image_path), 404);
+
+        return $disk->response($plan->bank_qr_image_path, null, [
+            'Content-Disposition' => 'inline',
+            'Cache-Control' => 'no-store, private',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Robots-Tag' => 'noindex, noarchive, nosnippet',
         ]);
     }
 

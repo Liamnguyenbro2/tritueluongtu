@@ -152,7 +152,7 @@ class Plan extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->bank_qr_image_path);
+        return route('plans.qr-image', $this);
     }
 }
 
