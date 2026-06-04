@@ -16,8 +16,8 @@ The current machine does not have PHP/Composer in PATH, so dependencies and migr
 
 ## Seeded accounts
 
-- Admin: `admin@example.com` / `password`
-- User: `user@example.com` / `password`
+- Admin: `......com` / `pass.....`
+- User: `.......com` / `pass....`
 
 ## SMTP Gmail and forgot-password OTP
 
