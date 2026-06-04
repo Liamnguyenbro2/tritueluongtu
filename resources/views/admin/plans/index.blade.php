@@ -13,7 +13,10 @@
 
     <section class="grid gap-6">
         @foreach($plans as $plan)
-            @php $isSelected = optional($selectedPlan)->id === $plan->id; @endphp
+            @php
+                $isSelected = optional($selectedPlan)->id === $plan->id;
+                $qrImageUrl = $plan->bankQrImageUrl();
+            @endphp
             <article id="plan-{{ $plan->id }}" class="glass rounded-[32px] p-6 {{ $isSelected ? 'ring-2 ring-emerald-300/60' : '' }}">
                 <div class="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
                     <div>
@@ -36,7 +39,7 @@
                     </div>
                 </div>
 
-                <form method="post" action="{{ route('admin.plans.update', $plan) }}" class="grid gap-5">
+                <form method="post" action="{{ route('admin.plans.update', $plan) }}" class="grid gap-5" enctype="multipart/form-data">
                     @csrf
                     @method('put')
 
@@ -72,10 +75,36 @@
                         </div>
                     </div>
 
-                    <label class="grid gap-2">
-                        <span class="text-sm text-slate-400">Mô tả gói</span>
-                        <textarea class="premium-input min-h-28" name="description" maxlength="1000" placeholder="Mô tả ngắn để hiển thị trên trang nâng cấp">{{ old('description', $plan->description) }}</textarea>
-                    </label>
+                    <div class="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
+                        <label class="grid gap-2">
+                            <span class="text-sm text-slate-400">Mô tả gói</span>
+                            <textarea class="premium-input min-h-28" name="description" maxlength="1000" placeholder="Mô tả ngắn để hiển thị trên trang nâng cấp">{{ old('description', $plan->description) }}</textarea>
+                        </label>
+
+                        <div class="grid gap-3 rounded-[28px] border border-white/10 bg-black/15 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-white">Ảnh mã QR của gói</p>
+                                    <p class="mt-1 text-xs text-slate-400">Hiển thị cho người dùng khi gói bật thanh toán bằng mã QR.</p>
+                                </div>
+                            </div>
+
+                            @if($qrImageUrl)
+                                <div class="overflow-hidden rounded-[24px] border border-white/10 bg-black/30 p-3">
+                                    <img src="{{ $qrImageUrl }}" alt="QR {{ $plan->name }}" class="mx-auto aspect-square w-full max-w-[220px] rounded-2xl object-cover">
+                                </div>
+                            @else
+                                <div class="grid min-h-[220px] place-items-center rounded-[24px] border border-dashed border-white/10 bg-black/10 text-center text-sm text-slate-500">
+                                    Chưa có ảnh mã QR cho gói này.
+                                </div>
+                            @endif
+
+                            <label class="grid gap-2">
+                                <span class="text-sm text-slate-400">Tải lên ảnh QR</span>
+                                <input type="file" name="bank_qr_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="block w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-500 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-violet-400">
+                            </label>
+                        </div>
+                    </div>
 
                     <label class="grid gap-2">
                         <span class="text-sm text-slate-400">Tính năng gói</span>

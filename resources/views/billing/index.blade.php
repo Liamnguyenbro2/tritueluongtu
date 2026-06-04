@@ -23,6 +23,7 @@
                 $hasBankQr = $plan->bank_qr_enabled;
                 $hasWallet = $plan->wallet_enabled;
                 $canPayWithWallet = $hasWallet && $wallet->balance_vnd >= $plan->price_vnd;
+                $qrImageUrl = $plan->bankQrImageUrl();
             @endphp
 
             <article class="group relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[.06] p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl transition duration-300 hover:-translate-y-2 hover:border-amber-200/40 hover:shadow-gold">
@@ -63,6 +64,19 @@
                             </li>
                         @endforeach
                     </ul>
+
+                    @if($hasBankQr && $qrImageUrl)
+                        <div class="mt-6 rounded-[28px] border border-violet-300/15 bg-black/20 p-4">
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-white">Mã QR thanh toán</p>
+                                    <p class="mt-1 text-xs text-slate-400">Ảnh QR này do admin cấu hình riêng cho gói {{ $plan->name }}.</p>
+                                </div>
+                                <i data-lucide="scan-line" class="h-5 w-5 text-violet-200"></i>
+                            </div>
+                            <img src="{{ $qrImageUrl }}" alt="QR thanh toán {{ $plan->name }}" class="mx-auto aspect-square w-full max-w-[260px] rounded-[24px] border border-white/10 bg-white object-cover p-2 shadow-glow">
+                        </div>
+                    @endif
 
                     <div class="mt-7 grid gap-3 sm:grid-cols-2">
                         @if($hasBankQr)

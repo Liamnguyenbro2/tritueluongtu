@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class UserProfile extends Model
 {
@@ -107,7 +108,7 @@ class Lesson extends Model
 
 class Plan extends Model
 {
-    protected $fillable = ['code', 'name', 'description', 'duration_days', 'price_vnd', 'features', 'bank_qr_enabled', 'wallet_enabled'];
+    protected $fillable = ['code', 'name', 'description', 'duration_days', 'price_vnd', 'features', 'bank_qr_enabled', 'bank_qr_image_path', 'wallet_enabled'];
 
     protected function casts(): array
     {
@@ -143,6 +144,15 @@ class Plan extends Model
             'wallet' => $this->wallet_enabled,
             default => false,
         };
+    }
+
+    public function bankQrImageUrl(): ?string
+    {
+        if (! $this->bank_qr_image_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->bank_qr_image_path);
     }
 }
 
