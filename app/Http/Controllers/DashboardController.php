@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lesson;
-use App\Models\Subscription;
+use App\Models\LessonUnlock;
 use App\Models\UserLessonAccess;
 use App\Services\AnnouncementFeedService;
 use Illuminate\Http\RedirectResponse;
@@ -15,18 +15,18 @@ class DashboardController extends Controller
     public function index(Request $request, AnnouncementFeedService $announcements): View
     {
         $user = $request->user();
-        $hasFullLessonAccess = $user->isAdmin();
+        $isAdmin = $user->isAdmin();
+        $hasFullLibrarySubscriptionAccess = ! $isAdmin && $user->hasFullLibrarySubscriptionAccess();
+        $activeSubscription = $user->activeSubscription();
+        $activeMonthlySubscription = $user->activeMonthlySubscription();
+        $latestMonthlySubscription = $user->latestSubscription(config('quantum.plans.monthly_code'));
+        $hasPerLessonMonthlyUnlocks = LessonUnlock::query()
+            ->where('user_id', $user->id)
+            ->where('expires_at', '>', now())
+            ->exists();
 
         $trialExpiresAt = $user->trial_started_at?->copy()->addHours(config('quantum.trial_hours'));
         $trialActive = $trialExpiresAt && now()->lt($trialExpiresAt);
-        $canActivatePaidLessons = $user->canActivatePaidLessons();
-        $activeSubscription = Subscription::query()
-            ->with('plan')
-            ->where('user_id', $user->id)
-            ->where('status', 'active')
-            ->where('ends_at', '>', now())
-            ->orderByDesc('ends_at')
-            ->first();
 
         $accessByLessonId = UserLessonAccess::query()
             ->where('user_id', $user->id)
@@ -34,14 +34,40 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('lesson_id');
 
-        $lessons = Lesson::query()->orderBy('position')->get()->map(function (Lesson $lesson) use ($accessByLessonId, $canActivatePaidLessons, $trialActive, $trialExpiresAt, $hasFullLessonAccess) {
+        $unlockByLessonId = LessonUnlock::query()
+            ->where('user_id', $user->id)
+            ->get()
+            ->keyBy('lesson_id');
+
+        $lessons = Lesson::query()->orderBy('position')->get()->map(function (Lesson $lesson) use (
+            $isAdmin,
+            $hasFullLibrarySubscriptionAccess,
+            $activeMonthlySubscription,
+            $latestMonthlySubscription,
+            $accessByLessonId,
+            $unlockByLessonId,
+            $trialActive,
+            $trialExpiresAt,
+        ) {
             $paidAccess = $accessByLessonId->get($lesson->id);
+            $lessonUnlock = $unlockByLessonId->get($lesson->id);
             $paidAccessActive = $paidAccess?->isActive() ?? false;
-            $usesPaidFlow = $hasFullLessonAccess || $canActivatePaidLessons || $paidAccessActive;
-            $usesTrialFlow = $lesson->is_trial && ! $usesPaidFlow;
+            $lessonUnlockActive = $lessonUnlock?->isActive() ?? false;
+            $hasLessonEntitlement = $isAdmin || $hasFullLibrarySubscriptionAccess || $lessonUnlockActive;
+            $usesTrialFlow = $lesson->is_trial && ! $hasLessonEntitlement && ! $paidAccessActive;
             $isTrialActive = $usesTrialFlow && $trialActive;
-            $isUnlocked = $hasFullLessonAccess ? true : ($usesTrialFlow ? $isTrialActive : $paidAccessActive);
+            $isActive = $isAdmin ? true : ($usesTrialFlow ? $isTrialActive : $paidAccessActive);
             $expiresAt = $usesTrialFlow ? $trialExpiresAt : ($paidAccessActive ? $paidAccess->expires_at : null);
+            $lessonMembershipExpiresAt = $lessonUnlockActive
+                ? $lessonUnlock->expires_at
+                : ($hasFullLibrarySubscriptionAccess ? $activeMonthlySubscription?->ends_at : null);
+            $lessonMembershipExpired = $lessonUnlock !== null && ! $lessonUnlockActive;
+            $legacyMonthlyExpired = ! $lessonMembershipExpired
+                && ! $hasFullLibrarySubscriptionAccess
+                && $latestMonthlySubscription?->grants_full_library
+                && $latestMonthlySubscription?->ends_at
+                && $latestMonthlySubscription->ends_at->lte(now());
+            $canToggle = ! $isAdmin && ! $usesTrialFlow && ($hasLessonEntitlement || $paidAccessActive);
 
             return [
                 'id' => $lesson->id,
@@ -53,12 +79,19 @@ class DashboardController extends Controller
                 'media_url' => $lesson->video_source_type === 'embed'
                     ? route('lessons.player', $lesson)
                     : ($lesson->media_path ? route('lessons.media', $lesson) : null),
-                'locked' => ! $isUnlocked,
+                'locked' => ! $isActive,
                 'trial' => $usesTrialFlow,
-                'active' => $isUnlocked,
-                'can_activate' => ! $hasFullLessonAccess && ! $usesTrialFlow && $canActivatePaidLessons,
+                'active' => $isActive,
+                'can_activate' => $canToggle,
+                'can_unlock' => false,
+                'requires_membership_upgrade' => ! $isAdmin && ! $usesTrialFlow && ! $canToggle,
+                'unlock_price_vnd' => (int) $lesson->unlock_price_vnd,
+                'is_unlocked_lesson' => $lessonUnlockActive,
                 'expires_at' => $expiresAt?->toIso8601String(),
                 'expires_label' => $expiresAt?->format('d/m/Y H:i'),
+                'membership_expires_at' => $lessonMembershipExpiresAt?->toIso8601String(),
+                'membership_expires_label' => $lessonMembershipExpiresAt?->format('d/m/Y H:i'),
+                'membership_expired' => $lessonMembershipExpired || $legacyMonthlyExpired,
             ];
         });
 
@@ -68,19 +101,34 @@ class DashboardController extends Controller
             'lessons',
             'trialExpiresAt',
             'activeSubscription',
+            'activeMonthlySubscription',
+            'hasPerLessonMonthlyUnlocks',
             'pendingAnnouncements'
         ));
     }
 
     public function toggle(Request $request, Lesson $lesson): RedirectResponse
     {
-        abort_unless($request->user()->canActivatePaidLessons(), 403);
+        $user = $request->user();
+
+        if ($user->isAdmin()) {
+            return back()->with('status', html_entity_decode('T&#224;i kho&#7843;n admin xem to&#224;n b&#7897; n&#7897;i dung m&#224; kh&#244;ng c&#7847;n b&#7853;t/t&#7855;t.'));
+        }
 
         $existingAccess = UserLessonAccess::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->where('lesson_id', $lesson->id)
             ->where('source', 'paid')
             ->first();
+
+        $hasLessonEntitlement = $user->hasFullLibrarySubscriptionAccess()
+            || LessonUnlock::query()
+                ->where('user_id', $user->id)
+                ->where('lesson_id', $lesson->id)
+                ->where('expires_at', '>', now())
+                ->exists();
+
+        abort_unless($hasLessonEntitlement || $existingAccess?->isActive(), 403);
 
         if ($existingAccess?->isActive()) {
             $existingAccess->update([
@@ -92,7 +140,7 @@ class DashboardController extends Controller
 
         UserLessonAccess::query()->updateOrCreate(
             [
-                'user_id' => $request->user()->id,
+                'user_id' => $user->id,
                 'lesson_id' => $lesson->id,
             ],
             [
@@ -104,5 +152,12 @@ class DashboardController extends Controller
         );
 
         return back()->with('status', html_entity_decode('&#272;&#227; b&#7853;t n&#7897;i dung ').$lesson->title.html_entity_decode(' trong 7 ng&#224;y.'));
+    }
+
+    public function unlock(Request $request, Lesson $lesson): RedirectResponse
+    {
+        return redirect()
+            ->route('billing')
+            ->with('status', html_entity_decode('H&#227;y v&#224;o m&#7909;c N&#226;ng c&#7845;p &#273;&#7875; mua g&#243;i th&#225;ng v&#224; ch&#7885;n b&#224;i h&#7885;c ').$lesson->title.'.');
     }
 }

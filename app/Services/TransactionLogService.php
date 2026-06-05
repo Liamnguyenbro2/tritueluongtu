@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LedgerEntry;
+use App\Models\LessonUnlock;
 use App\Models\PaymentOrder;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -135,6 +136,7 @@ class TransactionLogService
             'withdrawal_refund' => $this->buildMappedEntry($entry, TransactionLog::TYPE_REFUND, TransactionLog::STATUS_SUCCESS, $entry->memo ?: 'Hoàn tiền về ví.'),
             'admin_transfer_in' => $this->buildMappedEntry($entry, TransactionLog::TYPE_MONEY_IN, TransactionLog::STATUS_SUCCESS, $entry->memo ?: 'Nhận tiền từ admin.'),
             'admin_transfer_out' => $this->buildMappedEntry($entry, TransactionLog::TYPE_MONEY_OUT, TransactionLog::STATUS_SUCCESS, $entry->memo ?: 'Chuyển tiền cho người dùng khác.'),
+            'lesson_unlock_payment' => $this->buildMappedEntry($entry, TransactionLog::TYPE_LESSON_UNLOCK, TransactionLog::STATUS_SUCCESS, $entry->memo ?: 'Mở khóa bài học.'),
             default => $this->buildMappedEntry(
                 $entry,
                 $entry->amount_vnd >= 0 ? TransactionLog::TYPE_MONEY_IN : TransactionLog::TYPE_MONEY_OUT,
@@ -165,6 +167,10 @@ class TransactionLogService
 
         if ($reference instanceof PaymentOrder) {
             return $reference->code;
+        }
+
+        if ($reference instanceof LessonUnlock) {
+            return 'LU-'.$reference->id;
         }
 
         return 'LE-'.$entry->id;

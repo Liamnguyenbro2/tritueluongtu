@@ -83,7 +83,7 @@ class AccountantDashboardTest extends TestCase
         $this->seed();
 
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
-        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
         $wallets = app(WalletLedgerService::class);
         $wallet = $wallets->walletForUser($user);
         $wallets->credit($wallet, 500000, 'seed_topup');

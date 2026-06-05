@@ -10,6 +10,7 @@ class TransactionLog extends Model
     public const TYPE_MONEY_OUT = 'money_out';
     public const TYPE_PLAN_UPGRADE = 'plan_upgrade';
     public const TYPE_PLAN_RENEWAL = 'plan_renewal';
+    public const TYPE_LESSON_UNLOCK = 'lesson_unlock';
     public const TYPE_AFFILIATE = 'affiliate';
     public const TYPE_POOL_SHARE = 'pool_share';
     public const TYPE_REFUND = 'refund';
@@ -43,6 +44,7 @@ class TransactionLog extends Model
             self::TYPE_POOL_SHARE => 'Pool Share',
             self::TYPE_PLAN_UPGRADE => 'Nâng cấp gói',
             self::TYPE_PLAN_RENEWAL => 'Gia hạn gói',
+            self::TYPE_LESSON_UNLOCK => 'Mở khóa bài học',
             self::TYPE_REFUND => 'Hoàn tiền',
             self::TYPE_OTHER => 'Khác',
         ];

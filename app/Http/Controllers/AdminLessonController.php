@@ -76,6 +76,7 @@ class AdminLessonController extends Controller
             'description' => ['nullable', 'string'],
             'is_trial' => ['nullable', 'boolean'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
+            'unlock_price_vnd' => ['required', 'integer', 'min:0'],
             'thumbnail' => ['nullable', 'image', 'max:10240'],
             'media' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm', 'max:204800'],
             'video_source_type' => ['required', 'in:upload,embed'],
@@ -109,7 +110,11 @@ class AdminLessonController extends Controller
             ]);
         }
 
-        return $data + ['is_trial' => false, 'embed_url' => $embedUrl];
+        return $data + [
+            'is_trial' => false,
+            'embed_url' => $embedUrl,
+            'unlock_price_vnd' => (int) ($data['unlock_price_vnd'] ?? config('quantum.default_lesson_unlock_price_vnd')),
+        ];
     }
 
     private function resolveMediaPayload(Request $request, ?Lesson $lesson = null): array

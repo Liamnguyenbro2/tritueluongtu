@@ -43,6 +43,7 @@ class AdminLessonManagementTest extends TestCase
                 'title' => 'Bai hoc embed',
                 'description' => 'Noi dung',
                 'duration_minutes' => 15,
+                'unlock_price_vnd' => 49000,
                 'video_source_type' => 'embed',
                 'embed_url' => 'https://media.tritueluongtu.com/wp-content/uploads/2026/06/ngu-sau.mp4',
             ])

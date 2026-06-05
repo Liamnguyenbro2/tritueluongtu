@@ -46,7 +46,7 @@ class PaymentWebhookTest extends TestCase
         $this->seed();
 
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
-        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
         $wallet = app(WalletLedgerService::class)->walletForUser($user);
         app(WalletLedgerService::class)->credit($wallet, (int) $plan->price_vnd, 'test_topup');
 
@@ -74,7 +74,7 @@ class PaymentWebhookTest extends TestCase
         $this->seed();
 
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
-        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
 
         $this->actingAs($user)->from('/billing')->post('/billing/orders', [
             'plan_id' => $plan->id,
@@ -122,7 +122,7 @@ class PaymentWebhookTest extends TestCase
         Carbon::setTestNow('2026-05-25 10:00:00');
 
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
-        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
         $lesson = Lesson::query()->where('is_trial', false)->orderBy('position')->firstOrFail();
         $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
         app(PaymentProcessor::class)->complete($order, 'BANK-ACTIVE');
@@ -158,7 +158,7 @@ class PaymentWebhookTest extends TestCase
             'trial_started_at' => now()->subDays(10),
         ]);
 
-        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
         $trialLesson = Lesson::query()->where('is_trial', true)->orderBy('position')->firstOrFail();
         $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
         app(PaymentProcessor::class)->complete($order, 'BANK-TRIAL-ACTIVE');
@@ -176,5 +176,24 @@ class PaymentWebhookTest extends TestCase
         $this->assertSame('2026-06-01 10:00:00', $access->expires_at->toDateTimeString());
 
         Carbon::setTestNow();
+    }
+
+    public function test_new_monthly_subscription_does_not_grant_full_library_access(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
+
+        app(PaymentProcessor::class)->complete($order, 'BANK-MONTHLY-NEW');
+
+        $subscription = Subscription::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
+
+        $this->assertFalse((bool) $subscription->grants_full_library);
+
+        $this->actingAs($user)
+            ->post(route('lessons.toggle', Lesson::query()->where('is_trial', false)->firstOrFail()))
+            ->assertForbidden();
     }
 }

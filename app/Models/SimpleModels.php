@@ -93,11 +93,15 @@ class Lesson extends Model
         'embed_url',
         'is_trial',
         'duration_minutes',
+        'unlock_price_vnd',
     ];
 
     protected function casts(): array
     {
-        return ['is_trial' => 'boolean'];
+        return [
+            'is_trial' => 'boolean',
+            'unlock_price_vnd' => 'integer',
+        ];
     }
 
     public function course()
@@ -158,11 +162,15 @@ class Plan extends Model
 
 class Subscription extends Model
 {
-    protected $fillable = ['user_id', 'plan_id', 'starts_at', 'ends_at', 'status'];
+    protected $fillable = ['user_id', 'plan_id', 'starts_at', 'ends_at', 'status', 'grants_full_library'];
 
     protected function casts(): array
     {
-        return ['starts_at' => 'datetime', 'ends_at' => 'datetime'];
+        return [
+            'starts_at' => 'datetime',
+            'ends_at' => 'datetime',
+            'grants_full_library' => 'boolean',
+        ];
     }
 
     public function plan()

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Lesson;
+use App\Models\LessonUnlock;
 use App\Models\PaymentOrder;
 use App\Models\Plan;
 use App\Models\Referral;
@@ -21,7 +23,7 @@ class PaymentProcessor
     ) {
     }
 
-    public function createOrder(int $userId, int $planId, int $amountVnd, string $paymentMethod = 'bank_qr'): PaymentOrder
+    public function createOrder(int $userId, int $planId, int $amountVnd, string $paymentMethod = 'bank_qr', array $metadata = []): PaymentOrder
     {
         $user = User::query()->findOrFail($userId);
         $plan = Plan::query()->findOrFail($planId);
@@ -33,11 +35,11 @@ class PaymentProcessor
             'code' => 'QI'.Str::upper(Str::random(8)),
             'amount_vnd' => $amountVnd,
             'status' => 'pending',
-            'metadata' => [
+            'metadata' => array_merge([
                 'payment_method' => $paymentMethod,
                 'qr' => $paymentMethod === 'bank_qr' ? config('quantum.bank_qr') : null,
                 'transaction_type' => $transactionType,
-            ],
+            ], $metadata),
         ]);
 
         $this->transactionLogs->upsertPaymentOrderLog(
@@ -51,14 +53,18 @@ class PaymentProcessor
         return $order;
     }
 
-    public function payWithWallet(User $user, Plan $plan): PaymentOrder
+    public function payWithWallet(User $user, Plan $plan, array $metadata = []): PaymentOrder
     {
-        return DB::transaction(function () use ($user, $plan) {
-            $order = $this->createOrder($user->id, $plan->id, (int) $plan->price_vnd, 'wallet');
+        return DB::transaction(function () use ($user, $plan, $metadata) {
+            $order = $this->createOrder($user->id, $plan->id, (int) $plan->price_vnd, 'wallet', $metadata);
             $wallet = $this->ledger->walletForUser($user);
 
             if ($wallet->is_locked) {
-                throw new \RuntimeException('Wallet is locked.');
+                throw new \RuntimeException('Ví của bạn đang bị khóa tạm thời.');
+            }
+
+            if ($wallet->balance_vnd < (int) $plan->price_vnd) {
+                throw new \RuntimeException('Số dư ví không đủ để thanh toán gói này.');
             }
 
             $this->ledger->debit($wallet, (int) $plan->price_vnd, 'wallet_payment', $order, "Thanh toán gói {$plan->name} bằng ví số dư");
@@ -93,13 +99,16 @@ class PaymentProcessor
             $extensionBase = $currentEndsAt ? Carbon::parse($currentEndsAt) : $now;
             $subscriptionEndsAt = $extensionBase->copy()->addDays((int) $plan->duration_days);
 
-            Subscription::query()->create([
+            $subscription = Subscription::query()->create([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'starts_at' => $now,
                 'ends_at' => $subscriptionEndsAt,
                 'status' => 'active',
+                'grants_full_library' => $plan->code !== config('quantum.plans.monthly_code'),
             ]);
+
+            $this->grantSelectedLessonIfNeeded($user, $lockedOrder, $plan, $subscription, $now);
 
             $transactionType = $lockedOrder->metadata['transaction_type']
                 ?? $this->transactionLogs->determinePlanTransactionType($user);
@@ -140,5 +149,39 @@ class PaymentProcessor
 
             return $lockedOrder->refresh();
         });
+    }
+
+    private function grantSelectedLessonIfNeeded(User $user, PaymentOrder $order, Plan $plan, Subscription $subscription, Carbon $now): void
+    {
+        if ($plan->code !== config('quantum.plans.monthly_code')) {
+            return;
+        }
+
+        $lessonId = data_get($order->metadata, 'selected_lesson_id');
+
+        if (! $lessonId) {
+            return;
+        }
+
+        $lesson = Lesson::query()
+            ->where('is_trial', false)
+            ->find($lessonId);
+
+        if (! $lesson) {
+            return;
+        }
+
+        LessonUnlock::query()->updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'lesson_id' => $lesson->id,
+            ],
+            [
+                'subscription_id' => $subscription->id,
+                'amount_vnd' => 0,
+                'unlocked_at' => $now,
+                'expires_at' => $subscription->ends_at,
+            ]
+        );
     }
 }

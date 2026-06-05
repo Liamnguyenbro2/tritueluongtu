@@ -124,7 +124,7 @@
                         <p class="text-sm text-slate-400">Thời hạn gói</p>
                         <i data-lucide="timer" class="h-5 w-5 text-amber-200"></i>
                     </div>
-                    @if($activeSubscription)
+                    @if($activeSubscription && ! ($hasPerLessonMonthlyUnlocks && $activeSubscription->plan?->code === config('quantum.plans.monthly_code') && ! ($activeSubscription->grants_full_library ?? false)))
                         <div x-data="subscriptionCountdown('{{ $activeSubscription->ends_at->toIso8601String() }}')" class="mt-3 rounded-2xl border border-amber-200/20 bg-amber-300/10 px-4 py-3">
                             <p class="text-sm font-semibold text-amber-100">{{ $activeSubscription->plan?->name }} của bạn còn lại</p>
                             <p class="break-anywhere mt-2 font-mono text-xl font-black text-white sm:text-2xl">
@@ -132,10 +132,16 @@
                             </p>
                             <p class="mt-1 text-xs text-slate-300">Hết hạn: {{ $activeSubscription->ends_at->format('d/m/Y H:i') }}</p>
                         </div>
+                    @elseif($hasPerLessonMonthlyUnlocks)
+                        <div class="mt-3 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-3">
+                            <p class="text-sm font-semibold text-violet-100">G&#243;i th&#225;ng theo t&#7915;ng kh&#243;a &#273;ang ho&#7841;t &#273;&#7897;ng</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-200">M&#7895;i b&#224;i h&#7885;c &#273;&#227; k&#237;ch ho&#7841;t c&#243; &#273;&#7891;ng h&#7891; 30 ng&#224;y ri&#234;ng ngay tr&#234;n card c&#7911;a kh&#243;a &#273;&#243;.</p>
+                            <p class="mt-1 text-xs text-slate-400">C&#225;c b&#224;i ch&#432;a k&#237;ch ho&#7841;t s&#7869; hi&#7875;n n&#250;t n&#226;ng c&#7845;p thay v&#236; &#273;&#7891;ng h&#7891;.</p>
+                        </div>
                     @else
                         <div class="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                             <p class="text-sm font-semibold text-slate-200">Bạn chưa có gói trả phí đang hoạt động.</p>
-                            <p class="mt-1 text-xs text-slate-400">Nâng cấp ngay để bật các khóa trả phí.</p>
+                            <p class="mt-1 text-xs text-slate-400">Nâng cấp ngay để mở khóa thư viện và quyền sử dụng bài học.</p>
                         </div>
                     @endif
                     <a href="{{ route('billing') }}" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 text-sm font-black text-white shadow-glow transition hover:-translate-y-1">
@@ -212,6 +218,11 @@
                                     <i data-lucide="clock-3" class="h-3 w-3 sm:h-3.5 sm:w-3.5"></i>
                                     Trải nghiệm
                                 </div>
+                            @elseif($lesson['is_unlocked_lesson'] ?? false)
+                                <div class="inline-flex items-center gap-1.5 rounded-full border border-violet-200/20 bg-violet-400/10 px-2 py-1 text-[10px] font-bold text-violet-100 sm:gap-2 sm:px-3 sm:text-xs">
+                                    <i data-lucide="badge-check" class="h-3 w-3 sm:h-3.5 sm:w-3.5"></i>
+                                    Đã mở khóa
+                                </div>
                             @endif
                         </div>
 
@@ -232,6 +243,24 @@
                             </div>
                         @endif
 
+                        @if($lesson['membership_expires_at'])
+                            <div x-data="lessonCountdown('{{ $lesson['membership_expires_at'] }}')" class="mt-3 rounded-2xl border border-violet-300/15 bg-violet-400/10 px-3 py-3 sm:px-4">
+                                <div class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                                    <span class="text-[10px] font-semibold uppercase text-violet-100/80 sm:text-xs">GÓI THÁNG CÒN LẠI</span>
+                                    <span class="break-anywhere font-mono text-xs font-black text-violet-100 sm:text-sm"><span x-text="days"></span> ngày | <span x-text="time"></span></span>
+                                </div>
+                                <p class="mt-1 text-[10px] text-violet-100/60 sm:text-xs">Hết hạn: {{ $lesson['membership_expires_label'] }}</p>
+                            </div>
+                        @elseif($lesson['membership_expired'] && $lesson['requires_membership_upgrade'])
+                            <div class="mt-3 rounded-2xl border border-rose-300/15 bg-rose-400/10 px-3 py-3 sm:px-4">
+                                <div class="flex min-w-0 items-center justify-between gap-2">
+                                    <span class="text-[10px] font-semibold uppercase text-rose-100/80 sm:text-xs">GÓI THÁNG ĐÃ HẾT HẠN</span>
+                                    <span class="text-xs font-black text-rose-100 sm:text-sm">Đã hết hạn</span>
+                                </div>
+                                <p class="mt-1 text-[10px] text-rose-100/60 sm:text-xs">Hãy nâng cấp lại để tiếp tục mở khóa bài học.</p>
+                            </div>
+                        @endif
+
                         <div class="mt-3 flex min-w-0 items-center justify-between gap-2 sm:mt-5 sm:gap-3">
                             @if($lesson['trial'])
                                 <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border {{ $lesson['locked'] ? 'border-rose-300/20 bg-rose-400/10 text-rose-100' : 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100' }} px-3 py-3 text-xs font-bold sm:gap-3 sm:px-4 sm:text-sm">
@@ -240,11 +269,15 @@
                                     </span>
                                     {{ $lesson['locked'] ? 'Hết trial' : 'Đang bật' }}
                                 </button>
-                            @elseif($lesson['locked'] && ! $lesson['can_activate'])
-                                <a class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm" href="{{ route('billing') }}">
-                                    <i data-lucide="zap" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Mua khóa
-                                </a>
-                            @else
+                            @elseif($lesson['can_unlock'])
+                                <form class="flex-1" method="post" action="{{ route('lessons.unlock', $lesson['id']) }}">
+                                    @csrf
+                                    <button class="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm">
+                                        <i data-lucide="wallet" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i>
+                                        Mở khóa {{ number_format($lesson['unlock_price_vnd'], 0, ',', '.') }} đ
+                                    </button>
+                                </form>
+                            @elseif($lesson['can_activate'])
                                 <form class="flex-1" method="post" action="{{ route('lessons.toggle', $lesson['id']) }}">
                                     @csrf
                                     <button class="flex w-full items-center justify-center gap-2 rounded-2xl border {{ $lesson['active'] ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15' : 'border-slate-300/15 bg-white/5 text-slate-100 hover:bg-white/10' }} px-3 py-3 text-xs font-bold transition sm:gap-3 sm:px-4 sm:text-sm">
@@ -254,6 +287,14 @@
                                         {{ $lesson['active'] ? 'Đang bật' : 'Đang tắt' }}
                                     </button>
                                 </form>
+                            @elseif($lesson['requires_membership_upgrade'])
+                                <a class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm" href="{{ route('billing') }}">
+                                    <i data-lucide="zap" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Nâng cấp
+                                </a>
+                            @else
+                                <button disabled class="flex w-full cursor-default items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-slate-100 sm:gap-3 sm:px-4 sm:text-sm">
+                                    <i data-lucide="shield-check" class="h-4 w-4"></i> Toàn quyền truy cập
+                                </button>
                             @endif
                         </div>
                     </div>
@@ -266,7 +307,7 @@
         <div x-transition.scale class="glass w-full max-w-lg rounded-[24px] p-4 sm:rounded-[32px] sm:p-6">
             <div class="flex items-start justify-between gap-4 sm:gap-6">
                 <div class="min-w-0">
-                    <p class="text-sm text-violet-200">Bạn đang xem trước nội dung </p>
+                    <p class="text-sm text-violet-200">Bạn đang xem trước nội dung</p>
                     <h3 class="break-anywhere mt-2 text-2xl font-black" x-text="preview?.title"></h3>
                 </div>
                 <button class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 transition hover:bg-white/20" @click="closePreview()">

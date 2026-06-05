@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Lesson;
+use App\Models\LessonUnlock;
 use App\Models\PaymentOrder;
 use App\Models\Plan;
 use App\Services\PaymentProcessor;
@@ -20,6 +22,15 @@ class BillingController extends Controller
     {
         return view('billing.index', [
             'plans' => Plan::query()->orderBy('price_vnd')->get(),
+            'lessons' => Lesson::query()
+                ->where('is_trial', false)
+                ->orderBy('position')
+                ->get(['id', 'position', 'title', 'unlock_price_vnd']),
+            'unlockedLessonIds' => LessonUnlock::query()
+                ->where('user_id', $request->user()->id)
+                ->where('expires_at', '>', now())
+                ->pluck('lesson_id')
+                ->all(),
             'orders' => PaymentOrder::query()
                 ->with('plan')
                 ->where('user_id', $request->user()->id)
@@ -51,31 +62,56 @@ class BillingController extends Controller
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
             'payment_method' => ['required', 'in:bank_qr,wallet'],
+            'lesson_id' => ['nullable', 'exists:lessons,id'],
         ]);
 
         $plan = Plan::query()->findOrFail($data['plan_id']);
+        $selectedLesson = $this->resolveMonthlyLesson($request, $plan, $data['lesson_id'] ?? null);
 
         if (! $plan->allowsPaymentMethod($data['payment_method'])) {
             throw ValidationException::withMessages([
-                'payment_method' => 'PhÆ°Æ¡ng thá»©c thanh toÃ¡n nÃ y Ä‘ang táº¡m táº¯t cho gÃ³i Ä‘Ã£ chá»n.',
+                'payment_method' => 'Phuong thuc thanh toan nay dang tam tat cho goi da chon.',
             ]);
+        }
+
+        $orderMetadata = [];
+
+        if ($selectedLesson) {
+            $orderMetadata['selected_lesson_id'] = $selectedLesson->id;
+            $orderMetadata['selected_lesson_title'] = $selectedLesson->title;
         }
 
         if ($data['payment_method'] === 'wallet') {
             try {
-                $order = $payments->payWithWallet($request->user(), $plan);
-            } catch (RuntimeException) {
+                $order = $payments->payWithWallet($request->user(), $plan, $orderMetadata);
+            } catch (RuntimeException $exception) {
                 throw ValidationException::withMessages([
-                    'payment_method' => 'Số dư ví không đủ để thanh toán gói này.',
+                    'payment_method' => $exception->getMessage() ?: 'So du vi khong du de thanh toan goi nay.',
                 ]);
             }
 
-            return redirect()->route('billing')->with('status', "Đã thanh toán bằng ví số dư: {$order->code}");
+            return redirect()->route('billing')->with(
+                'status',
+                $selectedLesson
+                    ? "Da thanh toan va mo khoa bai {$selectedLesson->title}: {$order->code}"
+                    : "Da thanh toan bang vi so du: {$order->code}"
+            );
         }
 
-        $order = $payments->createOrder($request->user()->id, $plan->id, (int) $plan->price_vnd);
+        $order = $payments->createOrder(
+            $request->user()->id,
+            $plan->id,
+            (int) $plan->price_vnd,
+            'bank_qr',
+            $orderMetadata
+        );
 
-        return redirect()->route('billing')->with('status', "Tạo đơn QR thành công: {$order->code}");
+        return redirect()->route('billing')->with(
+            'status',
+            $selectedLesson
+                ? "Tao don QR thanh cong cho bai {$selectedLesson->title}: {$order->code}"
+                : "Tao don QR thanh cong: {$order->code}"
+        );
     }
 
     public function show(Request $request, PaymentOrder $order): View
@@ -83,5 +119,36 @@ class BillingController extends Controller
         abort_unless($request->user()->is_admin || $order->user_id === $request->user()->id, 403);
 
         return view('billing.show', compact('order'));
+    }
+
+    private function resolveMonthlyLesson(Request $request, Plan $plan, ?string $lessonId): ?Lesson
+    {
+        if ($plan->code !== config('quantum.plans.monthly_code')) {
+            return null;
+        }
+
+        if (! $lessonId) {
+            throw ValidationException::withMessages([
+                'lesson_id' => 'Vui long chon bai hoc muon mo khoa khi mua goi thang.',
+            ]);
+        }
+
+        $lesson = Lesson::query()
+            ->where('is_trial', false)
+            ->findOrFail($lessonId);
+
+        $alreadyUnlocked = LessonUnlock::query()
+            ->where('user_id', $request->user()->id)
+            ->where('lesson_id', $lesson->id)
+            ->where('expires_at', '>', now())
+            ->exists();
+
+        if ($alreadyUnlocked) {
+            throw ValidationException::withMessages([
+                'lesson_id' => 'Bai hoc nay da duoc mo khoa truoc do.',
+            ]);
+        }
+
+        return $lesson;
     }
 }

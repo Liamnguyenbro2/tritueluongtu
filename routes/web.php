@@ -51,6 +51,7 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::post('/announcements/{announcement}/read', [NotificationController::class, 'readAnnouncement'])->name('announcements.read');
     Route::get('/members', [AffiliateController::class, 'index'])->name('affiliate.index');
+    Route::post('/lessons/{lesson}/unlock', [DashboardController::class, 'unlock'])->name('lessons.unlock');
     Route::post('/lessons/{lesson}/toggle', [DashboardController::class, 'toggle'])->name('lessons.toggle');
     Route::get('/lessons/{lesson}/thumbnail', [ProtectedLessonMediaController::class, 'thumbnail'])->name('lessons.thumbnail');
     Route::get('/lessons/{lesson}/media', [ProtectedLessonMediaController::class, 'media'])->name('lessons.media');

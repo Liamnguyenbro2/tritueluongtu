@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lesson;
+use App\Models\LessonUnlock;
 use App\Models\UserLessonAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -72,9 +73,15 @@ class ProtectedLessonMediaController extends Controller
             ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->exists();
+        $hasLessonEntitlement = $user->hasFullLibrarySubscriptionAccess()
+            || LessonUnlock::query()
+                ->where('user_id', $user->id)
+                ->where('lesson_id', $lesson->id)
+                ->where('expires_at', '>', now())
+                ->exists();
         $trialAllowed = $lesson->is_trial
+            && ! $hasLessonEntitlement
             && ! $paidAllowed
-            && ! $user->canActivatePaidLessons()
             && $trialExpiresAt
             && now()->lt($trialExpiresAt);
 

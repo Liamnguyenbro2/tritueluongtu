@@ -41,11 +41,12 @@
                 <input class="premium-input lg:col-span-2" name="title" placeholder="{!! html_entity_decode('T&#234;n b&#224;i h&#7885;c') !!}" required>
                 <textarea class="premium-input lg:col-span-4" name="description" rows="3" placeholder="{!! html_entity_decode('M&#244; t&#7843; n&#7897;i dung') !!}"></textarea>
                 <input class="premium-input" name="duration_minutes" type="number" min="1" max="600" value="12" placeholder="{!! html_entity_decode('Th&#7901;i l&#432;&#7907;ng ph&#250;t') !!}" required>
+                <input class="premium-input" name="unlock_price_vnd" type="number" min="0" step="1000" value="{{ config('quantum.default_lesson_unlock_price_vnd') }}" placeholder="{!! html_entity_decode('Gi&#225; m&#7903; kh&#243;a b&#224;i h&#7885;c') !!}" required>
                 <label class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
                     <input type="checkbox" name="is_trial" value="1" class="h-5 w-5 rounded border-white/20 bg-black/40 text-violet-500">
                     {!! html_entity_decode('B&#224;i mi&#7877;n ph&#237;') !!}
                 </label>
-                <label class="grid gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300 lg:col-span-2">
+                <label class="grid gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
                     <span class="text-xs uppercase tracking-[.18em] text-slate-500">{!! html_entity_decode('Ngu&#7891;n video') !!}</span>
                     <select class="premium-input" name="video_source_type" data-video-source-select>
                         <option value="upload">Upload Video</option>
@@ -135,11 +136,12 @@
                         <input class="premium-input lg:col-span-2" name="title" value="{{ $lesson->title }}" required>
                         <textarea class="premium-input lg:col-span-4" name="description" rows="3">{{ $lesson->description }}</textarea>
                         <input class="premium-input" name="duration_minutes" type="number" min="1" max="600" value="{{ $lesson->duration_minutes }}" required>
+                        <input class="premium-input" name="unlock_price_vnd" type="number" min="0" step="1000" value="{{ $lesson->unlock_price_vnd }}" required>
                         <label class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
                             <input type="checkbox" name="is_trial" value="1" @checked($lesson->is_trial) class="h-5 w-5 rounded border-white/20 bg-black/40 text-violet-500">
                             {!! html_entity_decode('B&#224;i mi&#7877;n ph&#237;') !!}
                         </label>
-                        <label class="grid gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300 lg:col-span-2">
+                        <label class="grid gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300">
                             <span class="text-xs uppercase tracking-[.18em] text-slate-500">{!! html_entity_decode('Ngu&#7891;n video') !!}</span>
                             <select class="premium-input" name="video_source_type" data-video-source-select>
                                 <option value="upload" @selected($sourceType === 'upload')>Upload Video</option>

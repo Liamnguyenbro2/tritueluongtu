@@ -4,7 +4,12 @@ return [
     'withdrawal_min_vnd' => 100000,
     'trial_hours' => 48,
     'paid_lesson_active_days' => 7,
+    'default_lesson_unlock_price_vnd' => 49000,
     'default_referral_code' => env('DEFAULT_REFERRAL_CODE', 'ADMIN'),
+    'plans' => [
+        'monthly_code' => 'monthly',
+        'yearly_code' => 'yearly',
+    ],
     'bank_webhook_secret' => env('BANK_WEBHOOK_SECRET'),
     'bank_qr' => [
         'bank_code' => env('BANK_QR_BANK_CODE'),

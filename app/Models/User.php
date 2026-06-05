@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Builder;
 
 class User extends Authenticatable
 {
@@ -78,6 +79,11 @@ class User extends Authenticatable
         return $this->hasMany(UserLessonAccess::class);
     }
 
+    public function lessonUnlocks()
+    {
+        return $this->hasMany(LessonUnlock::class);
+    }
+
     public function announcementReads()
     {
         return $this->hasMany(AnnouncementRead::class);
@@ -113,5 +119,54 @@ class User extends Authenticatable
     public function canActivatePaidLessons(): bool
     {
         return $this->hasActiveSubscription();
+    }
+
+    public function activeSubscription(?string $planCode = null): ?Subscription
+    {
+        return $this->activeSubscriptionsQuery($planCode)
+            ->with('plan')
+            ->orderByDesc('ends_at')
+            ->first();
+    }
+
+    public function latestSubscription(?string $planCode = null): ?Subscription
+    {
+        return $this->subscriptions()
+            ->with('plan')
+            ->when($planCode, function (Builder $query, string $planCode) {
+                $query->whereHas('plan', fn (Builder $planQuery) => $planQuery->where('code', $planCode));
+            })
+            ->orderByDesc('ends_at')
+            ->first();
+    }
+
+    public function hasFullLibrarySubscriptionAccess(): bool
+    {
+        return $this->activeSubscriptionsQuery()
+            ->where('grants_full_library', true)
+            ->exists();
+    }
+
+    public function hasUnlockableMonthlyMembership(): bool
+    {
+        $subscription = $this->activeMonthlySubscription();
+
+        return $subscription !== null && ! $subscription->grants_full_library;
+    }
+
+    public function activeMonthlySubscription(): ?Subscription
+    {
+        return $this->activeSubscription(config('quantum.plans.monthly_code'));
+    }
+
+    private function activeSubscriptionsQuery(?string $planCode = null)
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>', now())
+            ->when($planCode, function (Builder $query, string $planCode) {
+                $query->whereHas('plan', fn (Builder $planQuery) => $planQuery->where('code', $planCode));
+            });
     }
 }
