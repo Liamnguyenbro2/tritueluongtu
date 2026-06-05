@@ -91,7 +91,7 @@ class MonthlyLessonUnlockFlowTest extends TestCase
         $lessonB = $lessons[1];
         $wallet = app(WalletLedgerService::class)->walletForUser($user);
 
-        app(WalletLedgerService::class)->credit($wallet, (int) $plan->price_vnd, 'test_topup');
+        app(WalletLedgerService::class)->credit($wallet, (int) $lessonA->unlock_price_vnd, 'test_topup');
 
         $this->actingAs($user)
             ->post(route('billing.orders.store'), [
@@ -102,9 +102,12 @@ class MonthlyLessonUnlockFlowTest extends TestCase
             ->assertRedirect(route('billing'));
 
         $subscription = Subscription::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
+        $order = PaymentOrder::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
         $unlock = LessonUnlock::query()->where('user_id', $user->id)->where('lesson_id', $lessonA->id)->firstOrFail();
 
+        $this->assertSame((int) $lessonA->unlock_price_vnd, (int) $order->amount_vnd);
         $this->assertSame($subscription->ends_at->toDateTimeString(), $unlock->expires_at?->toDateTimeString());
+        $this->assertSame((int) $lessonA->unlock_price_vnd, (int) $unlock->amount_vnd);
 
         $this->actingAs($user)
             ->get(route('dashboard'))
@@ -197,7 +200,7 @@ class MonthlyLessonUnlockFlowTest extends TestCase
             'expires_at' => now()->subDays(20),
         ]);
 
-        app(WalletLedgerService::class)->credit($wallet, (int) $plan->price_vnd, 'test_topup');
+        app(WalletLedgerService::class)->credit($wallet, (int) $lesson->unlock_price_vnd, 'test_topup');
 
         $this->actingAs($user)
             ->post(route('billing.orders.store'), [

@@ -19,13 +19,13 @@ class TransactionHistoryTest extends TestCase
         $this->seed();
 
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
-        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
         $wallets = app(WalletLedgerService::class);
         $wallet = $wallets->walletForUser($user);
 
         $wallets->credit($wallet, (int) $plan->price_vnd, 'test_topup', null, 'Nạp tiền test vào ví.');
 
-        $order = app(PaymentProcessor::class)->payWithWallet($user, $plan);
+        $order = app(PaymentProcessor::class)->payWithWallet($user, $plan, (int) $plan->price_vnd);
 
         $wallets->credit($wallet, 450000, 'referral_commission', $order, 'Hoa hồng affiliate từ user #25 - abc@gmail.com kích hoạt gói.');
         $wallets->credit($wallet, 148500, 'pool_share_payout', null, 'Chi lại Pool Share ngày 30/05/2026.');

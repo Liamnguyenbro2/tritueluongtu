@@ -28,9 +28,46 @@
                 $canPayWithWallet = $hasWallet && $wallet->balance_vnd >= $plan->price_vnd;
                 $qrImageUrl = $plan->bankQrImageUrl();
                 $isMonthly = $plan->code === config('quantum.plans.monthly_code');
+                $monthlyLessonOptions = $isMonthly
+                    ? collect($lessons)
+                        ->reject(fn ($lesson) => in_array($lesson->id, $unlockedLessonIds, true))
+                        ->map(fn ($lesson) => [
+                            'id' => (string) $lesson->id,
+                            'price' => (int) $lesson->unlock_price_vnd,
+                            'label' => str_pad((string) $lesson->position, 2, '0', STR_PAD_LEFT).' - '.$lesson->title,
+                        ])
+                        ->values()
+                    : collect();
             @endphp
 
-            <article class="group relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[.06] p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl transition duration-300 hover:-translate-y-2 hover:border-amber-200/40 hover:shadow-gold">
+            <article
+                class="group relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[.06] p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl transition duration-300 hover:-translate-y-2 hover:border-amber-200/40 hover:shadow-gold"
+                @if($isMonthly)
+                    x-data="{
+                        selectedLessonId: @js((string) old('lesson_id', '')),
+                        lessonOptions: @js($monthlyLessonOptions),
+                        walletBalance: {{ (int) $wallet->balance_vnd }},
+                        findLesson(id) {
+                            return this.lessonOptions.find((lesson) => lesson.id === id) || null;
+                        },
+                        formatVnd(value) {
+                            return new Intl.NumberFormat('vi-VN').format(value);
+                        },
+                        get selectedLesson() {
+                            return this.findLesson(this.selectedLessonId);
+                        },
+                        get selectedPrice() {
+                            return this.selectedLesson ? this.selectedLesson.price : 0;
+                        },
+                        get hasSelectedLesson() {
+                            return !!this.selectedLesson;
+                        },
+                        get walletEnough() {
+                            return this.hasSelectedLesson && this.walletBalance >= this.selectedPrice;
+                        },
+                    }"
+                @endif
+            >
                 <div class="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-violet-500/30 blur-3xl transition group-hover:bg-amber-300/25"></div>
                 <div class="relative">
                     <div class="mb-5 flex items-center justify-between gap-3">
@@ -51,7 +88,14 @@
                     </div>
 
                     <h2 class="text-3xl font-black">{{ $plan->name }}</h2>
-                    <p class="mt-4 bg-gradient-to-r from-white to-violet-200 bg-clip-text text-5xl font-black text-transparent">{{ number_format($plan->price_vnd, 0, ',', '.') }} d</p>
+                    @if($isMonthly)
+                        <div class="mt-4">
+                            <p class="bg-gradient-to-r from-white to-violet-200 bg-clip-text text-5xl font-black text-transparent" x-text="hasSelectedLesson ? `${formatVnd(selectedPrice)} đ` : 'Chọn bài học'"></p>
+                            <p class="mt-2 text-sm text-slate-400" x-text="hasSelectedLesson ? `Thanh toán đúng giá của ${selectedLesson.label}` : 'Chọn bài học để xem đúng giá cần thanh toán.'"></p>
+                        </div>
+                    @else
+                        <p class="mt-4 bg-gradient-to-r from-white to-violet-200 bg-clip-text text-5xl font-black text-transparent">{{ number_format($plan->price_vnd, 0, ',', '.') }} d</p>
+                    @endif
                     <p class="mt-2 text-slate-400">{{ $plan->duration_days }} ng&#224;y s&#7917; d&#7909;ng</p>
 
                     @if($plan->description)
@@ -88,7 +132,7 @@
 
                                 <label class="grid gap-2">
                                     <span class="text-xs font-semibold uppercase tracking-[.18em] text-slate-400">T&#202;N B&#192;I H&#7884;C</span>
-                                    <select name="lesson_id" class="premium-input" required>
+                                    <select name="lesson_id" class="premium-input" x-model="selectedLessonId" required>
                                         <option value="">Ch&#7885;n b&#224;i h&#7885;c mu&#7889;n m&#7903; kh&#243;a</option>
                                         @foreach($lessons as $lesson)
                                             @php
@@ -114,9 +158,14 @@
                                     G&#243;i th&#225;ng ch&#7881; duy tr&#236; th&#7901;i h&#7841;n 30 ng&#224;y. B&#224;i h&#7885;c &#273;&#227; m&#7903; v&#7851;n gi&#7919; c&#417; ch&#7871; b&#7853;t/t&#7855;t 7 ng&#224;y nh&#432; hi&#7879;n t&#7841;i.
                                 </div>
 
+                                <div class="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100" x-show="hasSelectedLesson" x-cloak>
+                                    <p class="font-semibold">Số tiền thanh toán cho khóa đã chọn</p>
+                                    <p class="mt-1 font-mono text-lg font-black" x-text="`${formatVnd(selectedPrice)} đ`"></p>
+                                </div>
+
                                 <div class="grid gap-3 sm:grid-cols-2">
                                     @if($hasBankQr)
-                                        <button type="submit" name="payment_method" value="bank_qr" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1">
+                                        <button type="submit" name="payment_method" value="bank_qr" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-50" :disabled="!hasSelectedLesson">
                                             <i data-lucide="qr-code" class="h-5 w-5"></i> T&#7841;o QR m&#7903; kh&#243;a
                                         </button>
                                     @else
@@ -130,11 +179,12 @@
                                             type="submit"
                                             name="payment_method"
                                             value="wallet"
-                                            class="flex w-full items-center justify-center gap-2 rounded-2xl border px-5 py-4 font-black transition {{ $canPayWithWallet ? 'border-emerald-300/30 bg-emerald-400/15 text-emerald-100 hover:-translate-y-1 hover:bg-emerald-400/20' : 'cursor-not-allowed border-white/10 bg-white/5 text-slate-500' }}"
-                                            {{ $canPayWithWallet ? '' : 'disabled' }}
+                                            class="flex w-full items-center justify-center gap-2 rounded-2xl border px-5 py-4 font-black transition"
+                                            :class="walletEnough ? 'border-emerald-300/30 bg-emerald-400/15 text-emerald-100 hover:-translate-y-1 hover:bg-emerald-400/20' : 'cursor-not-allowed border-white/10 bg-white/5 text-slate-500'"
+                                            :disabled="!walletEnough"
                                         >
                                             <i data-lucide="wallet-cards" class="h-5 w-5"></i>
-                                            {!! $canPayWithWallet ? 'Thanh to&#225;n v&#237; v&#224; m&#7903; kh&#243;a' : 'V&#237; kh&#244;ng &#273;&#7911;' !!}
+                                            <span x-text="walletEnough ? 'Thanh toán ví và mở khóa' : (hasSelectedLesson ? 'Ví không đủ' : 'Chọn bài trước')"></span>
                                         </button>
                                     @else
                                         <div class="flex items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[.03] px-5 py-4 text-sm font-semibold text-slate-500">

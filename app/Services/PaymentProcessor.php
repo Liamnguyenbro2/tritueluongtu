@@ -53,21 +53,27 @@ class PaymentProcessor
         return $order;
     }
 
-    public function payWithWallet(User $user, Plan $plan, array $metadata = []): PaymentOrder
+    public function payWithWallet(User $user, Plan $plan, int $amountVnd, array $metadata = []): PaymentOrder
     {
-        return DB::transaction(function () use ($user, $plan, $metadata) {
-            $order = $this->createOrder($user->id, $plan->id, (int) $plan->price_vnd, 'wallet', $metadata);
+        return DB::transaction(function () use ($user, $plan, $amountVnd, $metadata) {
+            $order = $this->createOrder($user->id, $plan->id, $amountVnd, 'wallet', $metadata);
             $wallet = $this->ledger->walletForUser($user);
 
             if ($wallet->is_locked) {
-                throw new \RuntimeException('Ví của bạn đang bị khóa tạm thời.');
+                throw new \RuntimeException(html_entity_decode('V&#237; c&#7911;a b&#7841;n &#273;ang b&#7883; kh&#243;a t&#7841;m th&#7901;i.'));
             }
 
-            if ($wallet->balance_vnd < (int) $plan->price_vnd) {
-                throw new \RuntimeException('Số dư ví không đủ để thanh toán gói này.');
+            if ($wallet->balance_vnd < $amountVnd) {
+                throw new \RuntimeException(html_entity_decode('S&#7889; d&#432; v&#237; kh&#244;ng &#273;&#7911; &#273;&#7875; thanh to&#225;n g&#243;i n&#224;y.'));
             }
 
-            $this->ledger->debit($wallet, (int) $plan->price_vnd, 'wallet_payment', $order, "Thanh toán gói {$plan->name} bằng ví số dư");
+            $this->ledger->debit(
+                $wallet,
+                $amountVnd,
+                'wallet_payment',
+                $order,
+                html_entity_decode('Thanh to&#225;n g&#243;i ').$plan->name.html_entity_decode(' b&#7857;ng v&#237; s&#7889; d&#432;')
+            );
 
             return $this->complete($order, 'WALLET-'.$order->code);
         });
@@ -118,7 +124,7 @@ class PaymentProcessor
                 $transactionType,
                 TransactionLog::STATUS_SUCCESS,
                 $this->transactionLogs->planTransactionDescription($plan, $transactionType),
-                trim($this->transactionLogs->paymentMethodNote($lockedOrder).' | Mã giao dịch: '.$providerTransactionId)
+                trim($this->transactionLogs->paymentMethodNote($lockedOrder).' | '.html_entity_decode('M&#227; giao d&#7883;ch').': '.$providerTransactionId)
             );
 
             Referral::query()->where('referred_id', $user->id)->whereNull('activated_at')->update(['activated_at' => $now]);
@@ -129,7 +135,7 @@ class PaymentProcessor
             $referrer = $referral?->referrer()->first();
             $companyAdmin = User::query()->where('is_admin', true)->orderBy('id')->firstOrFail();
             $activatedAt = ($lockedOrder->paid_at ?? $now)->copy();
-            $triggerMemo = "#{$user->id} - {$user->email} kích hoạt - ".$activatedAt->format('d/m/Y | H:i');
+            $triggerMemo = "#{$user->id} - {$user->email} ".html_entity_decode('k&#237;ch ho&#7841;t').' - '.$activatedAt->format('d/m/Y | H:i');
             $companyWallet = $this->ledger->walletForUser($companyAdmin);
 
             if ($referrer) {
@@ -139,13 +145,13 @@ class PaymentProcessor
                     $referralAmount,
                     'referral_commission',
                     $lockedOrder,
-                    "Hoa hồng affiliate {$triggerMemo}",
+                    html_entity_decode('Hoa h&#7891;ng affiliate ').$triggerMemo,
                 );
             }
 
-            $this->ledger->credit($companyWallet, intdiv($amount * (int) $allocation['vat'], 100), 'company_vat', $lockedOrder, "Ghi nhận phí VAT {$triggerMemo}");
-            $this->ledger->credit($companyWallet, intdiv($amount * (int) $allocation['company_revenue'], 100), 'company_revenue', $lockedOrder, "Doanh thu do tài khoản {$triggerMemo}");
-            $this->ledger->credit($this->ledger->systemWallet('shared_pool'), intdiv($amount * (int) $allocation['shared_pool'], 100), 'payment_shared_pool', $lockedOrder, "Ghi nhận Pool Share {$triggerMemo}");
+            $this->ledger->credit($companyWallet, intdiv($amount * (int) $allocation['vat'], 100), 'company_vat', $lockedOrder, html_entity_decode('Ghi nh&#7853;n ph&#237; VAT ').$triggerMemo);
+            $this->ledger->credit($companyWallet, intdiv($amount * (int) $allocation['company_revenue'], 100), 'company_revenue', $lockedOrder, html_entity_decode('Doanh thu do t&#224;i kho&#7843;n ').$triggerMemo);
+            $this->ledger->credit($this->ledger->systemWallet('shared_pool'), intdiv($amount * (int) $allocation['shared_pool'], 100), 'payment_shared_pool', $lockedOrder, html_entity_decode('Ghi nh&#7853;n Pool Share ').$triggerMemo);
 
             return $lockedOrder->refresh();
         });
@@ -178,7 +184,7 @@ class PaymentProcessor
             ],
             [
                 'subscription_id' => $subscription->id,
-                'amount_vnd' => 0,
+                'amount_vnd' => (int) $order->amount_vnd,
                 'unlocked_at' => $now,
                 'expires_at' => $subscription->ends_at,
             ]

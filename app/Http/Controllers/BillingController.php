@@ -79,11 +79,16 @@ class BillingController extends Controller
         if ($selectedLesson) {
             $orderMetadata['selected_lesson_id'] = $selectedLesson->id;
             $orderMetadata['selected_lesson_title'] = $selectedLesson->title;
+            $orderMetadata['selected_lesson_price_vnd'] = (int) $selectedLesson->unlock_price_vnd;
         }
+
+        $checkoutAmount = $selectedLesson
+            ? (int) $selectedLesson->unlock_price_vnd
+            : (int) $plan->price_vnd;
 
         if ($data['payment_method'] === 'wallet') {
             try {
-                $order = $payments->payWithWallet($request->user(), $plan, $orderMetadata);
+                $order = $payments->payWithWallet($request->user(), $plan, $checkoutAmount, $orderMetadata);
             } catch (RuntimeException $exception) {
                 throw ValidationException::withMessages([
                     'payment_method' => $exception->getMessage() ?: 'So du vi khong du de thanh toan goi nay.',
@@ -101,7 +106,7 @@ class BillingController extends Controller
         $order = $payments->createOrder(
             $request->user()->id,
             $plan->id,
-            (int) $plan->price_vnd,
+            $checkoutAmount,
             'bank_qr',
             $orderMetadata
         );
