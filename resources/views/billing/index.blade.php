@@ -206,7 +206,12 @@
                                 </div>
                                 <i data-lucide="scan-line" class="h-5 w-5 text-violet-200"></i>
                             </div>
-                            <img src="{{ $qrImageUrl }}" alt="QR thanh to&#225;n {{ $plan->name }}" class="mx-auto aspect-square w-full max-w-[260px] rounded-[24px] border border-white/10 bg-white object-cover p-2 shadow-glow">
+                            <a href="{{ $qrImageUrl }}" target="_blank" rel="noopener noreferrer" class="mx-auto block w-full max-w-[260px]">
+                                <img src="{{ $qrImageUrl }}" alt="QR thanh to&#225;n {{ $plan->name }}" class="mx-auto aspect-square w-full rounded-[24px] border border-white/10 bg-white object-cover p-2 shadow-glow">
+                            </a>
+                            <p class="mt-3 text-center text-xs leading-5 text-slate-400">
+                                iPhone/iPad: gi&#7919; ch&#7841;m v&#224;o &#7843;nh QR &#273;&#7875; ch&#7885;n l&#432;u &#7843;nh.
+                            </p>
                             @if($qrImageUrl && $qrFileName)
                                 <button
                                     type="button"
