@@ -178,6 +178,33 @@ class PaymentWebhookTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_expired_trial_lesson_falls_back_to_upgrade_state(): void
+    {
+        $this->seed();
+        Carbon::setTestNow('2026-05-25 10:00:00');
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $user->update([
+            'trial_started_at' => now()->subDays(10),
+        ]);
+
+        $trialLesson = Lesson::query()->where('is_trial', true)->orderBy('position')->firstOrFail();
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response
+            ->assertOk()
+            ->assertSeeText($trialLesson->title)
+            ->assertDontSeeText('CÒN LẠI TRIAL')
+            ->assertSeeText('Nâng cấp');
+
+        $this->actingAs($user)
+            ->get(route('lessons.media', $trialLesson))
+            ->assertForbidden();
+
+        Carbon::setTestNow();
+    }
+
     public function test_new_monthly_subscription_does_not_grant_full_library_access(): void
     {
         $this->seed();

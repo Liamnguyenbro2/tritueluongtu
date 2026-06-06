@@ -54,7 +54,10 @@ class DashboardController extends Controller
             $paidAccessActive = $paidAccess?->isActive() ?? false;
             $lessonUnlockActive = $lessonUnlock?->isActive() ?? false;
             $hasLessonEntitlement = $isAdmin || $hasFullLibrarySubscriptionAccess || $lessonUnlockActive;
-            $usesTrialFlow = $lesson->is_trial && ! $hasLessonEntitlement && ! $paidAccessActive;
+            $usesTrialFlow = $lesson->is_trial
+                && $trialActive
+                && ! $hasLessonEntitlement
+                && ! $paidAccessActive;
             $isTrialActive = $usesTrialFlow && $trialActive;
             $isActive = $isAdmin ? true : ($usesTrialFlow ? $isTrialActive : $paidAccessActive);
             $expiresAt = $usesTrialFlow ? $trialExpiresAt : ($paidAccessActive ? $paidAccess->expires_at : null);
