@@ -49,8 +49,17 @@ class BillingController extends Controller
         $disk = Storage::disk('public');
         abort_unless($disk->exists($plan->bank_qr_image_path), 404);
 
-        return $disk->response($plan->bank_qr_image_path, null, [
-            'Content-Disposition' => 'inline',
+        $download = $request->boolean('download');
+        $filename = sprintf(
+            'plan-qr-%s.%s',
+            $plan->code ?: $plan->id,
+            pathinfo($plan->bank_qr_image_path, PATHINFO_EXTENSION) ?: 'png'
+        );
+
+        return $disk->response($plan->bank_qr_image_path, $download ? $filename : null, [
+            'Content-Disposition' => $download
+                ? 'attachment; filename="'.$filename.'"'
+                : 'inline',
             'Cache-Control' => 'no-store, private',
             'X-Content-Type-Options' => 'nosniff',
             'X-Robots-Tag' => 'noindex, noarchive, nosnippet',

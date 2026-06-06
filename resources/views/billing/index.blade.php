@@ -27,6 +27,7 @@
                 $hasWallet = $plan->wallet_enabled;
                 $canPayWithWallet = $hasWallet && $wallet->balance_vnd >= $plan->price_vnd;
                 $qrImageUrl = $plan->bankQrImageUrl();
+                $qrDownloadUrl = $plan->bankQrImageDownloadUrl();
                 $isMonthly = $plan->code === config('quantum.plans.monthly_code');
                 $monthlyLessonOptions = $isMonthly
                     ? collect($lessons)
@@ -206,6 +207,16 @@
                                 <i data-lucide="scan-line" class="h-5 w-5 text-violet-200"></i>
                             </div>
                             <img src="{{ $qrImageUrl }}" alt="QR thanh to&#225;n {{ $plan->name }}" class="mx-auto aspect-square w-full max-w-[260px] rounded-[24px] border border-white/10 bg-white object-cover p-2 shadow-glow">
+                            @if($qrDownloadUrl)
+                                <a
+                                    href="{{ $qrDownloadUrl }}"
+                                    download
+                                    class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:-translate-y-0.5 hover:bg-violet-400/15 hover:shadow-glow"
+                                >
+                                    <i data-lucide="download" class="h-4 w-4"></i>
+                                    T&#7843;i m&#227; QR v&#7873; m&#225;y
+                                </a>
+                            @endif
                         </div>
                     @endif
 

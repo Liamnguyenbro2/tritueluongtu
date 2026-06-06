@@ -62,6 +62,11 @@ class AdminPlanManagementTest extends TestCase
         $this->actingAs($admin)
             ->get($plan->bankQrImageUrl())
             ->assertOk();
+
+        $this->actingAs($admin)
+            ->get($plan->bankQrImageDownloadUrl())
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="plan-qr-monthly.png"');
     }
 
     public function test_billing_page_uses_plan_copy_and_renders_qr_image_when_enabled(): void
@@ -98,6 +103,8 @@ class AdminPlanManagementTest extends TestCase
             ->assertSee('Ch&#7885;n b&#224;i h&#7885;c m&#7903; tr&#7921;c ti&#7871;p', false)
             ->assertSee($lesson->title)
             ->assertSee($plan->bankQrImageUrl(), false)
+            ->assertSee($plan->bankQrImageDownloadUrl(), false)
+            ->assertSee('T&#7843;i m&#227; QR v&#7873; m&#225;y', false)
             ->assertSee('value="bank_qr"', false);
     }
 
