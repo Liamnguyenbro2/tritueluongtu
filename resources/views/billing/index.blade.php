@@ -27,7 +27,7 @@
                 $hasWallet = $plan->wallet_enabled;
                 $canPayWithWallet = $hasWallet && $wallet->balance_vnd >= $plan->price_vnd;
                 $qrImageUrl = $plan->bankQrImageUrl();
-                $qrDownloadUrl = $plan->bankQrImageDownloadUrl();
+                $qrFileName = $plan->bankQrImageFileName();
                 $isMonthly = $plan->code === config('quantum.plans.monthly_code');
                 $monthlyLessonOptions = $isMonthly
                     ? collect($lessons)
@@ -207,15 +207,16 @@
                                 <i data-lucide="scan-line" class="h-5 w-5 text-violet-200"></i>
                             </div>
                             <img src="{{ $qrImageUrl }}" alt="QR thanh to&#225;n {{ $plan->name }}" class="mx-auto aspect-square w-full max-w-[260px] rounded-[24px] border border-white/10 bg-white object-cover p-2 shadow-glow">
-                            @if($qrDownloadUrl)
-                                <a
-                                    href="{{ $qrDownloadUrl }}"
-                                    download
+                            @if($qrImageUrl && $qrFileName)
+                                <button
+                                    type="button"
+                                    data-save-image-url="{{ $qrImageUrl }}"
+                                    data-save-image-name="{{ $qrFileName }}"
                                     class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:-translate-y-0.5 hover:bg-violet-400/15 hover:shadow-glow"
                                 >
                                     <i data-lucide="download" class="h-4 w-4"></i>
                                     T&#7843;i m&#227; QR v&#7873; m&#225;y
-                                </a>
+                                </button>
                             @endif
                         </div>
                     @endif
@@ -322,3 +323,89 @@
     </section>
 </div>
 @endsection
+
+@once
+    <script>
+        async function saveImageToDevice(imageUrl, fileName) {
+            const fallbackDownload = async () => {
+                try {
+                    const response = await fetch(imageUrl, { credentials: 'same-origin' });
+
+                    if (!response.ok) {
+                        throw new Error('Unable to download image');
+                    }
+
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = objectUrl;
+                    anchor.download = fileName;
+                    anchor.rel = 'noopener';
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    anchor.remove();
+                    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+                } catch (error) {
+                    const anchor = document.createElement('a');
+                    anchor.href = imageUrl;
+                    anchor.download = fileName;
+                    anchor.rel = 'noopener';
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    anchor.remove();
+                }
+            };
+
+            try {
+                const response = await fetch(imageUrl, { credentials: 'same-origin' });
+
+                if (!response.ok) {
+                    throw new Error('Unable to fetch image');
+                }
+
+                const blob = await response.blob();
+                const mimeType = blob.type || 'image/png';
+                const shareableFile = new File([blob], fileName, { type: mimeType });
+                const canShareFile = typeof navigator !== 'undefined'
+                    && typeof navigator.share === 'function'
+                    && typeof navigator.canShare === 'function'
+                    && navigator.canShare({ files: [shareableFile] });
+
+                if (canShareFile) {
+                    await navigator.share({
+                        files: [shareableFile],
+                        title: fileName,
+                        text: 'Lưu ảnh QR này vào thiết bị của bạn.',
+                    });
+
+                    return;
+                }
+            } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+            }
+
+            await fallbackDownload();
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-save-image-url]');
+
+            if (!button) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const imageUrl = button.getAttribute('data-save-image-url');
+            const fileName = button.getAttribute('data-save-image-name') || 'plan-qr.png';
+
+            if (!imageUrl) {
+                return;
+            }
+
+            saveImageToDevice(imageUrl, fileName);
+        });
+    </script>
+@endonce

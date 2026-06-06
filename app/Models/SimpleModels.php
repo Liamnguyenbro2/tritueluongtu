@@ -167,6 +167,17 @@ class Plan extends Model
 
         return route('plans.qr-image', [$this, 'download' => 1]);
     }
+
+    public function bankQrImageFileName(): ?string
+    {
+        if (! $this->bank_qr_image_path) {
+            return null;
+        }
+
+        $extension = pathinfo($this->bank_qr_image_path, PATHINFO_EXTENSION) ?: 'png';
+
+        return sprintf('plan-qr-%s.%s', $this->code ?: $this->id, $extension);
+    }
 }
 
 class Subscription extends Model
