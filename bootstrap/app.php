@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        App\Console\Commands\CreateAdminUser::class,
         App\Console\Commands\DebugPoolShare::class,
         App\Console\Commands\DistributePoolShare::class,
         App\Console\Commands\RefundWeeklyPoolShare::class,
