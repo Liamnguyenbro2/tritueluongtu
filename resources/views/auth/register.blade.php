@@ -434,6 +434,60 @@
     })();
 
     (() => {
+        const enhancePasswordVisibility = (inputSelector) => {
+            const input = document.querySelector(inputSelector);
+
+            if (!input || input.dataset.passwordVisibilityReady === '1') {
+                return;
+            }
+
+            input.dataset.passwordVisibilityReady = '1';
+            input.classList.add('pr-14');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relative';
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'absolute inset-y-0 right-0 flex w-14 items-center justify-center text-slate-400 transition hover:text-violet-200';
+            button.setAttribute('aria-label', 'Hiện mật khẩu');
+            button.setAttribute('aria-pressed', 'false');
+            button.innerHTML = `
+                <svg data-password-eye-open class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg data-password-eye-closed class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m3 3 18 18"></path>
+                    <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83"></path>
+                    <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.91c5.05 0 9.27 3.11 10.94 7.5a10.78 10.78 0 0 1-4.16 5.09"></path>
+                    <path d="M6.61 6.61A10.75 10.75 0 0 0 1.94 12a10.75 10.75 0 0 0 7.45 6.73"></path>
+                    <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88"></path>
+                </svg>
+            `;
+
+            const eyeOpen = button.querySelector('[data-password-eye-open]');
+            const eyeClosed = button.querySelector('[data-password-eye-closed]');
+
+            button.addEventListener('click', () => {
+                const isVisible = input.type === 'text';
+                input.type = isVisible ? 'password' : 'text';
+                eyeOpen.classList.toggle('hidden', !isVisible);
+                eyeClosed.classList.toggle('hidden', isVisible);
+                button.setAttribute('aria-pressed', String(!isVisible));
+                button.setAttribute('aria-label', isVisible ? 'Hiện mật khẩu' : 'Ẩn mật khẩu');
+            });
+
+            wrapper.appendChild(button);
+        };
+
+        enhancePasswordVisibility('[data-password-input]');
+        enhancePasswordVisibility('[data-password-confirmation-input]');
+    })();
+
+    (() => {
         const passwordInput = document.querySelector('[data-password-input]');
         const confirmationInput = document.querySelector('[data-password-confirmation-input]');
         const confirmationStatus = document.querySelector('[data-password-confirmation-status]');
