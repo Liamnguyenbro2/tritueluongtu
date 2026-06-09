@@ -100,6 +100,10 @@
                 </div>
                 <p class="text-sm text-slate-300">Xin chào,</p>
                 <h1 class="break-anywhere mt-1 text-3xl font-black tracking-tight text-white sm:text-6xl">{{ auth()->user()->name }}</h1>
+                <div class="mt-4 inline-flex max-w-full items-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-sm font-semibold text-violet-100/90 shadow-[0_0_24px_rgba(139,92,246,.14)] sm:mt-5 sm:px-4">
+                    <span class="text-[10px] uppercase tracking-[.22em] text-violet-200/70 sm:text-xs">ID tài khoản</span>
+                    <span class="break-anywhere text-sm text-white/95 sm:text-base">{{ auth()->user()->username }}</span>
+                </div>
                 <p class="mt-5 max-w-2xl text-base leading-8 text-slate-300">Hệ thống sử dụng trải nghiệm hình ảnh và âm thanh mô phỏng trạng thái.</p>
                 <div class="mt-7 flex min-w-0 flex-row gap-3 sm:flex-wrap">
                     <a href="{{ route('billing') }}" class="group inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-3 text-xs font-bold text-white shadow-glow transition hover:-translate-y-1 hover:shadow-[0_0_56px_rgba(139,92,246,.55)] sm:flex-none sm:gap-2 sm:px-5 sm:text-sm">
@@ -186,7 +190,7 @@
     <section class="min-w-0">
         <div class="mb-5 flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div class="min-w-0">
-                <p class="mobile-wrap text-sm font-semibold uppercase tracking-[.14em] text-violet-200/70 sm:tracking-[.24em]">Content Library</p>
+                <p class="mobile-wrap text-sm font-semibold uppercase tracking-[.14em] text-violet-200/70 sm:tracking-[.24em]">Trí tuệ lượng tử Album</p>
                 <h2 class="break-anywhere mt-2 text-3xl font-black sm:text-4xl">Thư viện nội dung ({{ $lessons->count() }})</h2>
             </div>
             <div class="break-anywhere w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center text-sm text-slate-300 sm:w-auto sm:rounded-full sm:text-left">Bản quyền bởi Trí tuệ lượng tử ®</div>
