@@ -79,11 +79,27 @@ class AdminController extends Controller
         ]); 
     }
 
-    public function users(): View
+    public function users(Request $request): View
     {
-        $users = User::query()
+        $search = trim((string) $request->query('q', ''));
+        $activeSubscriptions = function ($query) {
+            $query->where('status', 'active')
+                ->where('starts_at', '<=', now())
+                ->where('ends_at', '>', now());
+        };
+
+        $regularUsers = User::query()
             ->where('is_admin', false)
-            ->where('role', 'user')
+            ->where('role', 'user');
+
+        $users = (clone $regularUsers)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery
+                        ->where('email', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%");
+                });
+            })
             ->with([
                 'wallet',
                 'subscriptions' => function ($query) {
@@ -95,10 +111,24 @@ class AdminController extends Controller
                 },
             ])
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.users.index', [
             'users' => $users,
+            'search' => $search,
+            'stats' => [
+                'total' => (clone $regularUsers)->count(),
+                'inactive' => (clone $regularUsers)->whereDoesntHave('subscriptions', $activeSubscriptions)->count(),
+                'monthly' => (clone $regularUsers)->whereHas('subscriptions', function ($query) use ($activeSubscriptions) {
+                    $activeSubscriptions($query);
+                    $query->whereHas('plan', fn ($planQuery) => $planQuery->where('code', 'monthly'));
+                })->count(),
+                'yearly' => (clone $regularUsers)->whereHas('subscriptions', function ($query) use ($activeSubscriptions) {
+                    $activeSubscriptions($query);
+                    $query->whereHas('plan', fn ($planQuery) => $planQuery->where('code', 'yearly'));
+                })->count(),
+            ],
         ]);
     }
 

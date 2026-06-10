@@ -72,6 +72,12 @@ class AdminUserManagementTest extends TestCase
             ->assertSeeText('Quản trị user')
             ->assertSeeText('Gói tháng')
             ->assertSeeText('Gói năm')
+            ->assertViewHas('stats', function ($stats) {
+                return array_key_exists('total', $stats)
+                    && array_key_exists('inactive', $stats)
+                    && array_key_exists('monthly', $stats)
+                    && array_key_exists('yearly', $stats);
+            })
             ->assertViewHas('users', function ($paginator) use ($latestUser) {
                 $items = collect($paginator->items());
 
@@ -130,6 +136,43 @@ class AdminUserManagementTest extends TestCase
                 return $paginator->total() >= 1
                     && collect($paginator->items())->every(fn ($transaction) => $transaction->user_id === $targetUser->id);
             });
+    }
+
+    public function test_admin_can_search_users_by_email_or_username(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        $alphaUser = User::query()->create([
+            'username' => 'alphauser',
+            'name' => 'Alpha User',
+            'email' => 'alpha@example.com',
+            'phone' => '0971111111',
+            'password' => 'password',
+            'role' => 'user',
+        ]);
+
+        $betaUser = User::query()->create([
+            'username' => 'betatest',
+            'name' => 'Beta User',
+            'email' => 'beta@example.com',
+            'phone' => '0972222222',
+            'password' => 'password',
+            'role' => 'user',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index', ['q' => 'alpha@example.com']))
+            ->assertOk()
+            ->assertSeeText('alpha@example.com')
+            ->assertDontSeeText('beta@example.com');
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index', ['q' => 'betatest']))
+            ->assertOk()
+            ->assertSeeText($betaUser->username)
+            ->assertDontSeeText($alphaUser->username);
     }
 
     public function test_non_admin_cannot_access_admin_user_management_routes(): void

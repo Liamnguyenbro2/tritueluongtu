@@ -11,12 +11,43 @@
             </div>
             <div class="rounded-[24px] border border-white/10 bg-black/25 px-5 py-4">
                 <p class="text-sm text-slate-400">Tổng user thường</p>
-                <p class="mt-2 text-3xl font-black">{{ $users->total() }}</p>
+                <p class="mt-2 text-3xl font-black">{{ $stats['total'] }}</p>
+            </div>
+        </div>
+        <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
+                <p class="text-sm text-slate-400">Ch&#432;a k&iacute;ch ho&#7841;t</p>
+                <p class="mt-2 text-3xl font-black">{{ $stats['inactive'] }}</p>
+            </div>
+            <div class="rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
+                <p class="text-sm text-slate-400">User g&oacute;i th&aacute;ng</p>
+                <p class="mt-2 text-3xl font-black">{{ $stats['monthly'] }}</p>
+            </div>
+            <div class="rounded-[24px] border border-white/10 bg-black/20 px-5 py-4">
+                <p class="text-sm text-slate-400">User g&oacute;i n&#259;m</p>
+                <p class="mt-2 text-3xl font-black">{{ $stats['yearly'] }}</p>
             </div>
         </div>
     </section>
 
     <section class="glass rounded-[32px] p-6">
+        <div class="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+            <div>
+                <h2 class="text-2xl font-black">Danh sách user</h2>
+                <p class="mt-1 text-sm text-slate-400">Tìm theo Email hoặc ID tài khoản.</p>
+            </div>
+            <form method="get" action="{{ route('admin.users.index') }}" class="flex w-full gap-2 lg:w-[460px]">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"></i>
+                    <input class="premium-input pl-11" name="q" value="{{ $search }}" placeholder="Email hoặc ID tài khoản">
+                </div>
+                <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 font-bold shadow-glow transition hover:-translate-y-0.5">Tìm</button>
+                @if($search !== '')
+                    <a href="{{ route('admin.users.index') }}" class="grid place-items-center rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/15">Xóa</a>
+                @endif
+            </form>
+        </div>
+
         <div class="overflow-x-auto">
             <table class="w-full min-w-[980px] text-left text-sm">
                 <thead class="text-xs uppercase tracking-[.18em] text-slate-500">
