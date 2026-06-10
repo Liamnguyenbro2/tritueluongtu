@@ -28,6 +28,35 @@
     </div>
 @endif
 
+@if(session('device_login_conflict'))
+    @php($deviceConflict = session('device_login_conflict'))
+    <div class="fixed inset-0 z-[80] grid place-items-center bg-black/70 px-4 backdrop-blur-sm">
+        <div class="glass max-w-lg rounded-[32px] p-6 shadow-glow sm:p-8">
+            <div class="flex items-start gap-4">
+                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-400/20 text-amber-100">
+                    <i data-lucide="smartphone-charging" class="h-6 w-6"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/80">Phiên đăng nhập đang hoạt động</p>
+                    <h2 class="mt-2 text-2xl font-black leading-tight">Không thể đăng nhập thiết bị mới</h2>
+                    <p class="mt-3 leading-7 text-slate-200">
+                        {{ $deviceConflict['message'] }}
+                    </p>
+                    @if(!empty($deviceConflict['device_name']))
+                        <p class="mt-2 text-sm text-slate-300">Thiết bị hiện tại: {{ $deviceConflict['device_name'] }}</p>
+                    @endif
+                    @if(!empty($deviceConflict['last_seen_at']))
+                        <p class="mt-2 text-sm text-slate-400">Hoạt động gần nhất: {{ $deviceConflict['last_seen_at'] }}</p>
+                    @endif
+                </div>
+            </div>
+            <button type="button" class="mt-6 w-full rounded-2xl bg-gradient-to-r from-amber-400 to-violet-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1" onclick="this.closest('.fixed').remove()">
+                Tôi đã hiểu
+            </button>
+        </div>
+    </div>
+@endif
+
 @php($loginLock = session('login_lock'))
 @if(session('status'))
     <div class="mx-auto mb-6 max-w-2xl rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">

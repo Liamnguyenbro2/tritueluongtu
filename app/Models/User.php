@@ -99,6 +99,11 @@ class User extends Authenticatable
         return $this->hasMany(TransactionLog::class);
     }
 
+    public function loginSession()
+    {
+        return $this->hasOne(UserLoginSession::class);
+    }
+
     public function activeSuspension()
     {
         return $this->hasOne(AccountSuspension::class)

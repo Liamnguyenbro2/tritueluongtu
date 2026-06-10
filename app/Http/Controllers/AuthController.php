@@ -6,6 +6,7 @@ use App\Models\AccountSuspension;
 use App\Models\Referral;
 use App\Models\ReferralLink;
 use App\Models\User;
+use App\Models\UserLoginSession;
 use App\Models\UserProfile;
 use App\Services\WalletLedgerService;
 use Carbon\Carbon;
@@ -222,6 +223,8 @@ class AuthController extends Controller
         $wallets->walletForUser($user);
 
         Auth::login($user);
+        $request->session()->regenerate();
+        $this->storeSingleDeviceSession($request, $user);
 
         return $this->redirectAfterLogin($user);
     }
@@ -250,10 +253,22 @@ class AuthController extends Controller
                 ->onlyInput('login');
         }
 
-        if ($user && Auth::attempt(['id' => $user->id, 'password' => $credentials['password']], true)) {
+        if ($user && Auth::attempt(['id' => $user->id, 'password' => $credentials['password']])) {
             $this->clearLoginGuards($login, $user);
 
             $request->session()->regenerate();
+
+            if ($this->hasActiveSessionOnAnotherDevice($request, $user)) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('login')
+                    ->with('device_login_conflict', $this->deviceLoginConflictPayload($user))
+                    ->withInput(['login' => $login]);
+            }
+
+            $this->storeSingleDeviceSession($request, $user);
 
             return $this->redirectAfterLogin($user);
         }
@@ -293,6 +308,12 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        if ($user && ! $user->isAdmin() && ! $user->isAccountant()) {
+            UserLoginSession::query()->where('user_id', $user->id)->delete();
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -382,6 +403,85 @@ class AuthController extends Controller
 
         Cache::forget($attemptKey);
         Cache::forget($lockKey);
+    }
+
+    private function hasActiveSessionOnAnotherDevice(Request $request, User $user): bool
+    {
+        if ($user->isAdmin() || $user->isAccountant()) {
+            return false;
+        }
+
+        UserLoginSession::query()
+            ->where('user_id', $user->id)
+            ->where('expires_at', '<=', now())
+            ->delete();
+
+        $activeSession = UserLoginSession::query()->where('user_id', $user->id)->first();
+
+        if (! $activeSession) {
+            return false;
+        }
+
+        return $activeSession->session_id !== $request->session()->getId();
+    }
+
+    private function storeSingleDeviceSession(Request $request, User $user): void
+    {
+        if ($user->isAdmin() || $user->isAccountant()) {
+            return;
+        }
+
+        UserLoginSession::query()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'session_id' => $request->session()->getId(),
+                'device_name' => $this->resolveDeviceName($request),
+                'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
+                'ip_address' => $request->ip(),
+                'last_seen_at' => now(),
+                'expires_at' => now()->addMinutes((int) config('session.lifetime', 120)),
+            ]
+        );
+    }
+
+    private function deviceLoginConflictPayload(User $user): array
+    {
+        $session = UserLoginSession::query()->where('user_id', $user->id)->first();
+
+        return [
+            'message' => 'Bạn đang sử dụng tài khoản này trên một thiết bị khác, vui lòng đăng xuất khỏi thiết bị đó.',
+            'device_name' => $session?->device_name,
+            'last_seen_at' => $session?->last_seen_at?->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function resolveDeviceName(Request $request): ?string
+    {
+        $userAgent = (string) $request->userAgent();
+
+        if ($userAgent === '') {
+            return null;
+        }
+
+        $platform = str_contains($userAgent, 'iPhone') || str_contains($userAgent, 'iPad')
+            ? 'iPhone/iPad'
+            : (str_contains($userAgent, 'Android')
+                ? 'Android'
+                : (str_contains($userAgent, 'Windows')
+                    ? 'Windows'
+                    : (str_contains($userAgent, 'Macintosh') ? 'Mac' : 'Thiết bị khác')));
+
+        $browser = str_contains($userAgent, 'Edg/')
+            ? 'Edge'
+            : (str_contains($userAgent, 'Chrome/')
+                ? 'Chrome'
+                : (str_contains($userAgent, 'Safari/') && ! str_contains($userAgent, 'Chrome/')
+                    ? 'Safari'
+                    : (str_contains($userAgent, 'Firefox/')
+                        ? 'Firefox'
+                        : 'Trình duyệt')));
+
+        return $platform.' - '.$browser;
     }
 
     private function suspensionNoticePayload(User $user, AccountSuspension $suspension): array

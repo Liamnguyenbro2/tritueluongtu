@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'not_suspended' => App\Http\Middleware\EnsureAccountIsNotSuspended::class,
             'admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
             'accountant' => App\Http\Middleware\EnsureUserIsAccountant::class,
+            'single_device_session' => App\Http\Middleware\EnsureSingleDeviceSessionIsValid::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
