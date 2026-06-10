@@ -8,6 +8,7 @@ use App\Models\PaymentOrder;
 use App\Models\Referral;
 use App\Models\ReferralLink;
 use App\Models\SiteSetting;
+use App\Models\TransactionLog;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WithdrawalRequest;
@@ -54,8 +55,8 @@ class AdminController extends Controller
                 });
             })
             ->latest()
-            ->limit(50)
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.index', [
             'users' => $users,
@@ -76,6 +77,57 @@ class AdminController extends Controller
                 ->limit(10)
                 ->get() ?? collect(),
         ]); 
+    }
+
+    public function users(): View
+    {
+        $users = User::query()
+            ->where('is_admin', false)
+            ->where('role', 'user')
+            ->with([
+                'wallet',
+                'subscriptions' => function ($query) {
+                    $query->with('plan')
+                        ->where('status', 'active')
+                        ->where('starts_at', '<=', now())
+                        ->where('ends_at', '>', now())
+                        ->orderByDesc('ends_at');
+                },
+            ])
+            ->latest()
+            ->paginate(10);
+
+        return view('admin.users.index', [
+            'users' => $users,
+        ]);
+    }
+
+    public function userShow(User $user, WalletLedgerService $wallets): View
+    {
+        abort_if($user->isAdmin() || $user->isAccountant(), 404);
+
+        $user->load([
+            'subscriptions' => function ($query) {
+                $query->with('plan')
+                    ->where('status', 'active')
+                    ->where('starts_at', '<=', now())
+                    ->where('ends_at', '>', now())
+                    ->orderByDesc('ends_at');
+            },
+        ]);
+
+        $transactions = TransactionLog::query()
+            ->where('user_id', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'transactions_page')
+            ->withQueryString();
+
+        return view('admin.users.show', [
+            'user' => $user,
+            'wallet' => $wallets->walletForUser($user),
+            'transactions' => $transactions,
+            'activePlanLabel' => $this->activePlanLabel($user),
+        ]);
     }
 
     public function storeAccountant(Request $request, WalletLedgerService $wallets): RedirectResponse
@@ -488,6 +540,18 @@ class AdminController extends Controller
         if ($start) {
             $query->where('created_at', '>=', $start);
         }
+    }
+
+    private function activePlanLabel(User $user): string
+    {
+        $activeSubscription = $user->subscriptions->first();
+        $planCode = $activeSubscription?->plan?->code;
+
+        return match ($planCode) {
+            'monthly' => 'Gói tháng',
+            'yearly' => 'Gói năm',
+            default => 'Chưa kích hoạt',
+        };
     }
 
     public function suspend(Request $request, User $user): RedirectResponse

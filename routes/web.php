@@ -70,6 +70,8 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('index');
+    Route::get('/users', [AdminController::class, 'users'])->name('users.index');
+    Route::get('/users/{user}', [AdminController::class, 'userShow'])->name('users.show');
     Route::get('/shared-pool', [AdminController::class, 'sharedPoolHistory'])->name('shared-pool.history');
     Route::put('/branding', [AdminController::class, 'updateBranding'])->name('branding.update');
     Route::post('/wallet-transfer', [AdminController::class, 'transferToUser'])->name('wallet-transfer');

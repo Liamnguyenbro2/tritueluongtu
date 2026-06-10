@@ -236,6 +236,9 @@
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.passwords') }}">
                     <i data-lucide="key-round" class="h-5 w-5 text-emerald-300"></i><span>Đổi pass user</span>
                 </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.users.index') }}">
+                    <i data-lucide="users" class="h-5 w-5 text-violet-300"></i><span>Quản trị user</span>
+                </a>
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.plans.index') }}">
                     <i data-lucide="badge-dollar-sign" class="h-5 w-5 text-emerald-300"></i><span>Quản lý gói</span>
                 </a>

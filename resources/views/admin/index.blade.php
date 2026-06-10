@@ -194,6 +194,11 @@
                     </tbody>
                 </table>
             </div>
+            @if($users->hasPages())
+                <div class="mt-5">
+                    {{ $users->onEachSide(1)->links() }}
+                </div>
+            @endif
         </div>
 
         <div class="glass rounded-[32px] p-6">
