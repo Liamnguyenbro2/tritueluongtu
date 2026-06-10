@@ -157,6 +157,7 @@
         }
     </style>
 </head>
+@php($authSessionMeta = auth()->check() ? request()->attributes->get('auth_session_client_payload') : null)
 <body class="min-h-screen overflow-x-hidden bg-night text-white antialiased" x-data="{ sidebarOpen: false, notificationsOpen: false }" x-init="$nextTick(() => lucide.createIcons())">
 <div class="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
 
@@ -401,6 +402,42 @@
         @yield('content')
     </main>
 </div>
+
+@auth
+    @if($authSessionMeta)
+        <div id="session-warning-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+            <div class="glass w-full max-w-xl rounded-[32px] p-6 shadow-glow sm:p-8">
+                <div class="flex items-start gap-4">
+                    <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-400/20 text-amber-100">
+                        <i data-lucide="timer-reset" class="h-6 w-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[.22em] text-amber-200/80">Cảnh báo phiên đăng nhập</p>
+                        <h2 class="mt-2 text-2xl font-black leading-tight">Phiên đăng nhập sắp hết hạn</h2>
+                        <p class="mt-3 leading-7 text-slate-200">
+                            Phiên đăng nhập của bạn sắp hết hạn. Vui lòng tiếp tục phiên làm việc nếu muốn duy trì đăng nhập.
+                        </p>
+                        <p class="mt-3 text-sm text-slate-300">
+                            Còn lại: <span class="font-black text-white" data-session-warning-countdown>00:00</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                    <button type="button" id="session-continue-button" class="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1">
+                        Tiếp tục phiên làm việc
+                    </button>
+                    <button type="button" id="session-logout-button" class="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 font-black text-slate-100 transition hover:bg-white/15">
+                        Đăng xuất ngay
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <form id="session-expire-form" method="post" action="{{ route('session.expire') }}" class="hidden">
+            @csrf
+        </form>
+    @endif
+@endauth
 
 <script>
     document.addEventListener('alpine:init', () => {
@@ -689,6 +726,118 @@
             },
         }));
     });
+
+    (() => {
+        const sessionMeta = @json($authSessionMeta);
+        const modal = document.getElementById('session-warning-modal');
+        const continueButton = document.getElementById('session-continue-button');
+        const logoutButton = document.getElementById('session-logout-button');
+        const expireForm = document.getElementById('session-expire-form');
+        const countdown = document.querySelector('[data-session-warning-countdown]');
+
+        if (!sessionMeta || !modal || !continueButton || !logoutButton || !expireForm || !countdown) {
+            return;
+        }
+
+        const csrfToken = @json(csrf_token());
+        let warningVisible = false;
+        let idleExpiresAt = new Date(sessionMeta.idle_expires_at).getTime();
+        let absoluteExpiresAt = new Date(sessionMeta.absolute_expires_at).getTime();
+        const warningSeconds = Number(sessionMeta.warning_seconds || 300);
+        let heartbeatPending = false;
+
+        const effectiveExpiry = () => Math.min(idleExpiresAt, absoluteExpiresAt);
+
+        const formatSeconds = (seconds) => {
+            const safe = Math.max(0, Math.ceil(seconds));
+            const minutes = String(Math.floor(safe / 60)).padStart(2, '0');
+            const secs = String(safe % 60).padStart(2, '0');
+
+            return `${minutes}:${secs}`;
+        };
+
+        const showWarning = () => {
+            if (warningVisible) {
+                return;
+            }
+
+            warningVisible = true;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        const hideWarning = () => {
+            warningVisible = false;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        const expireNow = () => {
+            expireForm.submit();
+        };
+
+        const tick = () => {
+            const remainingSeconds = (effectiveExpiry() - Date.now()) / 1000;
+
+            if (remainingSeconds <= 0) {
+                expireNow();
+                return;
+            }
+
+            countdown.textContent = formatSeconds(remainingSeconds);
+
+            if (remainingSeconds <= warningSeconds) {
+                showWarning();
+            } else if (warningVisible && !heartbeatPending) {
+                hideWarning();
+            }
+        };
+
+        continueButton.addEventListener('click', async () => {
+            if (heartbeatPending) {
+                return;
+            }
+
+            heartbeatPending = true;
+            continueButton.disabled = true;
+
+            try {
+                const response = await fetch(@json(route('session.heartbeat')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ keep_alive: true }),
+                });
+
+                if (!response.ok) {
+                    expireNow();
+                    return;
+                }
+
+                const payload = await response.json();
+
+                idleExpiresAt = new Date(payload.session.idle_expires_at).getTime();
+                absoluteExpiresAt = new Date(payload.session.absolute_expires_at).getTime();
+                hideWarning();
+                tick();
+            } catch (error) {
+                expireNow();
+            } finally {
+                heartbeatPending = false;
+                continueButton.disabled = false;
+            }
+        });
+
+        logoutButton.addEventListener('click', () => {
+            expireNow();
+        });
+
+        tick();
+        setInterval(tick, 1000);
+    })();
     window.addEventListener('load', () => lucide.createIcons());
 
     (() => {

@@ -2,74 +2,47 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\UserLoginSession;
+use App\Services\AuthSessionService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureSingleDeviceSessionIsValid
 {
+    public function __construct(
+        private readonly AuthSessionService $authSessions,
+    ) {
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if (! $user || $user->isAdmin() || $user->isAccountant()) {
+        if (! $user) {
             return $next($request);
         }
 
-        $sessionId = $request->session()->getId();
+        if ($this->authSessions->isExpired($request, $user)) {
+            $this->authSessions->clear($request, $user);
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
-        if ($sessionId === '') {
-            return $next($request);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.',
+                    'session_expired' => true,
+                ], 401);
+            }
+
+            return redirect()->route('login')->with('session_expired_notice', $this->authSessions->expiredPayload());
         }
 
-        $this->persistSession($request, $user->id, $sessionId);
+        $request->attributes->set(
+            'auth_session_client_payload',
+            $this->authSessions->touch($request, $user)
+        );
 
         return $next($request);
-    }
-
-    private function persistSession(Request $request, int $userId, string $sessionId): void
-    {
-        UserLoginSession::query()->updateOrCreate(
-            ['user_id' => $userId],
-            [
-                'session_id' => $sessionId,
-                'device_name' => $this->resolveDeviceName($request),
-                'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
-                'ip_address' => $request->ip(),
-                'last_seen_at' => now(),
-                'expires_at' => now()->addMinutes((int) config('session.lifetime', 120)),
-            ]
-        );
-    }
-
-    private function resolveDeviceName(Request $request): ?string
-    {
-        $userAgent = (string) $request->userAgent();
-
-        if ($userAgent === '') {
-            return null;
-        }
-
-        $platform = str_contains($userAgent, 'iPhone') || str_contains($userAgent, 'iPad')
-            ? 'iPhone/iPad'
-            : (str_contains($userAgent, 'Android')
-                ? 'Android'
-                : (str_contains($userAgent, 'Windows')
-                    ? 'Windows'
-                    : (str_contains($userAgent, 'Macintosh') ? 'Mac' : 'Thiết bị khác')));
-
-        $browser = str_contains($userAgent, 'Edg/')
-            ? 'Edge'
-            : (str_contains($userAgent, 'Chrome/')
-                ? 'Chrome'
-                : (str_contains($userAgent, 'Safari/') && ! str_contains($userAgent, 'Chrome/')
-                    ? 'Safari'
-                    : (str_contains($userAgent, 'Firefox/')
-                        ? 'Firefox'
-                        : 'Trình duyệt')));
-
-        return $platform.' - '.$browser;
     }
 }

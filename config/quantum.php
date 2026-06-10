@@ -35,6 +35,21 @@ return [
         'shared_pool' => 15,
     ],
     'affiliate_commission_percent' => 30,
+    'auth_sessions' => [
+        'warning_seconds' => 300,
+        'user' => [
+            'idle_minutes' => 60 * 24,
+            'absolute_minutes' => 60 * 24 * 7,
+            'idle_label' => 'Không hoạt động trong 24 giờ',
+            'absolute_label' => '7 ngày kể từ lúc đăng nhập',
+        ],
+        'privileged' => [
+            'idle_minutes' => 60 * 4,
+            'absolute_minutes' => 60 * 24,
+            'idle_label' => 'Không hoạt động trong 4 giờ',
+            'absolute_label' => '24 giờ kể từ lúc đăng nhập',
+        ],
+    ],
     'pool_share_groups' => [
         'A' => ['min' => 10, 'max' => 49, 'share_bp' => 3330],
         'B' => ['min' => 50, 'max' => 99, 'share_bp' => 3330],

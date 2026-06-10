@@ -57,6 +57,29 @@
     </div>
 @endif
 
+@if(session('session_expired_notice'))
+    @php($expiredNotice = session('session_expired_notice'))
+    <div class="fixed inset-0 z-[80] grid place-items-center bg-black/70 px-4 backdrop-blur-sm">
+        <div class="glass max-w-lg rounded-[32px] p-6 shadow-glow sm:p-8">
+            <div class="flex items-start gap-4">
+                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-violet-500/20 text-violet-100">
+                    <i data-lucide="hourglass" class="h-6 w-6"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[.22em] text-violet-200/80">Phiên đăng nhập hết hạn</p>
+                    <h2 class="mt-2 text-2xl font-black leading-tight">Vui lòng đăng nhập lại</h2>
+                    <p class="mt-3 leading-7 text-slate-200">
+                        {{ $expiredNotice['message'] }}
+                    </p>
+                </div>
+            </div>
+            <button type="button" class="mt-6 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-4 font-black shadow-glow transition hover:-translate-y-1" onclick="this.closest('.fixed').remove()">
+                Tôi đã hiểu
+            </button>
+        </div>
+    </div>
+@endif
+
 @php($loginLock = session('login_lock'))
 @if(session('status'))
     <div class="mx-auto mb-6 max-w-2xl rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">

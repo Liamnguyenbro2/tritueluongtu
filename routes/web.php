@@ -42,6 +42,8 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::middleware(['auth', 'single_device_session', 'not_suspended'])->group(function () {
+    Route::post('/session/heartbeat', [AuthController::class, 'heartbeat'])->name('session.heartbeat');
+    Route::post('/session/expire', [AuthController::class, 'expireSession'])->name('session.expire');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -68,7 +70,7 @@ Route::middleware(['auth', 'single_device_session', 'not_suspended'])->group(fun
     Route::post('/wallet/withdrawals', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
 });
 
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'single_device_session', 'not_suspended', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('index');
     Route::get('/users', [AdminController::class, 'users'])->name('users.index');
     Route::get('/users/{user}', [AdminController::class, 'userShow'])->name('users.show');
@@ -107,7 +109,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/withdrawals/{withdrawal}/reject', [AdminController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
 });
 
-Route::middleware(['auth', 'accountant'])->prefix('accountant')->name('accountant.')->group(function () {
+Route::middleware(['auth', 'single_device_session', 'not_suspended', 'accountant'])->prefix('accountant')->name('accountant.')->group(function () {
     Route::get('/', [AccountantController::class, 'dashboard'])->name('dashboard');
     Route::get('/transactions', [AccountantController::class, 'transactions'])->name('transactions.index');
     Route::get('/transactions/export/{format}', [AccountantController::class, 'exportTransactions'])->name('transactions.export');
