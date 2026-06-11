@@ -12,20 +12,14 @@ class UserLoginSession extends Model
         'device_name',
         'user_agent',
         'ip_address',
-        'login_at',
         'last_seen_at',
-        'idle_expires_at',
-        'absolute_expires_at',
         'expires_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'login_at' => 'datetime',
             'last_seen_at' => 'datetime',
-            'idle_expires_at' => 'datetime',
-            'absolute_expires_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
     }

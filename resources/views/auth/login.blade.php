@@ -28,6 +28,7 @@
     </div>
 @endif
 
+{{--
 @if(session('device_login_conflict'))
     @php($deviceConflict = session('device_login_conflict'))
     <div class="fixed inset-0 z-[80] grid place-items-center bg-black/70 px-4 backdrop-blur-sm">
@@ -56,7 +57,9 @@
         </div>
     </div>
 @endif
+--}}
 
+{{--
 @if(session('session_expired_notice'))
     @php($expiredNotice = session('session_expired_notice'))
     <div class="fixed inset-0 z-[80] grid place-items-center bg-black/70 px-4 backdrop-blur-sm">
@@ -79,6 +82,7 @@
         </div>
     </div>
 @endif
+--}}
 
 @php($loginLock = session('login_lock'))
 @if(session('status'))

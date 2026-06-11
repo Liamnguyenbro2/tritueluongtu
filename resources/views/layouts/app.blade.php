@@ -157,7 +157,7 @@
         }
     </style>
 </head>
-@php($authSessionMeta = auth()->check() ? request()->attributes->get('auth_session_client_payload') : null)
+{{-- @php($authSessionMeta = auth()->check() ? request()->attributes->get('auth_session_client_payload') : null) --}}
 <body class="min-h-screen overflow-x-hidden bg-night text-white antialiased" x-data="{ sidebarOpen: false, notificationsOpen: false }" x-init="$nextTick(() => lucide.createIcons())">
 <div class="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
 
@@ -403,6 +403,7 @@
     </main>
 </div>
 
+{{--
 @auth
     @if($authSessionMeta)
         <div id="session-warning-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
@@ -438,6 +439,7 @@
         </form>
     @endif
 @endauth
+--}}
 
 <script>
     document.addEventListener('alpine:init', () => {
@@ -727,6 +729,7 @@
         }));
     });
 
+    {{--
     (() => {
         const sessionMeta = @json($authSessionMeta);
         const modal = document.getElementById('session-warning-modal');
@@ -838,6 +841,7 @@
         tick();
         setInterval(tick, 1000);
     })();
+    --}}
     window.addEventListener('load', () => lucide.createIcons());
 
     (() => {

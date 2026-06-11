@@ -7,7 +7,6 @@ use App\Models\Referral;
 use App\Models\ReferralLink;
 use App\Models\User;
 use App\Models\UserProfile;
-use App\Services\AuthSessionService;
 use App\Services\WalletLedgerService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
@@ -23,11 +22,6 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function __construct(
-        private readonly AuthSessionService $authSessions,
-    ) {
-    }
-
     private const LOGIN_LOCK_AFTER = 5;
     private const LOGIN_SUSPEND_AFTER = 10;
     private const LOGIN_LOCK_MINUTES = 15;
@@ -229,7 +223,6 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
-        $this->authSessions->start($request, $user);
 
         return $this->redirectAfterLogin($user);
     }
@@ -262,18 +255,6 @@ class AuthController extends Controller
             $this->clearLoginGuards($login, $user);
 
             $request->session()->regenerate();
-
-            if ($this->authSessions->hasActiveSessionOnAnotherDevice($request, $user)) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return redirect()->route('login')
-                    ->with('device_login_conflict', $this->authSessions->conflictPayload($user))
-                    ->withInput(['login' => $login]);
-            }
-
-            $this->authSessions->start($request, $user);
 
             return $this->redirectAfterLogin($user);
         }
@@ -313,40 +294,11 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        $user = $request->user();
-
-        $this->authSessions->clear($request, $user);
-
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('landing');
-    }
-
-    public function heartbeat(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        abort_unless($user, 401);
-
-        return response()->json([
-            'ok' => true,
-            'session' => $this->authSessions->touch($request, $user),
-        ]);
-    }
-
-    public function expireSession(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-
-        $this->authSessions->clear($request, $user);
-
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect()->route('login')->with('session_expired_notice', $this->authSessions->expiredPayload());
     }
 
     private function redirectAfterLogin(User $user): RedirectResponse
@@ -433,6 +385,48 @@ class AuthController extends Controller
         Cache::forget($lockKey);
     }
 
+    /*
+    private function deviceLoginConflictPayload(User $user): array
+    {
+        $session = UserLoginSession::query()->where('user_id', $user->id)->first();
+
+        return [
+            'message' => 'Bạn đang sử dụng tài khoản này trên một thiết bị khác, vui lòng đăng xuất khỏi thiết bị đó.',
+            'device_name' => $session?->device_name,
+            'last_seen_at' => $session?->last_seen_at?->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function resolveDeviceName(Request $request): ?string
+    {
+        $userAgent = (string) $request->userAgent();
+
+        if ($userAgent === '') {
+            return null;
+        }
+
+        $platform = str_contains($userAgent, 'iPhone') || str_contains($userAgent, 'iPad')
+            ? 'iPhone/iPad'
+            : (str_contains($userAgent, 'Android')
+                ? 'Android'
+                : (str_contains($userAgent, 'Windows')
+                    ? 'Windows'
+                    : (str_contains($userAgent, 'Macintosh') ? 'Mac' : 'Thiết bị khác')));
+
+        $browser = str_contains($userAgent, 'Edg/')
+            ? 'Edge'
+            : (str_contains($userAgent, 'Chrome/')
+                ? 'Chrome'
+                : (str_contains($userAgent, 'Safari/') && ! str_contains($userAgent, 'Chrome/')
+                    ? 'Safari'
+                    : (str_contains($userAgent, 'Firefox/')
+                        ? 'Firefox'
+                        : 'Trình duyệt')));
+
+        return $platform.' - '.$browser;
+    }
+
+    */
     private function suspensionNoticePayload(User $user, AccountSuspension $suspension): array
     {
         return [
