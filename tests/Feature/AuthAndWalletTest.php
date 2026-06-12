@@ -62,7 +62,7 @@ class AuthAndWalletTest extends TestCase
             'accepted_terms' => '1',
         ])->assertRedirect('/register')
             ->assertSessionHasErrors([
-                'username' => 'ID tài khoản chỉ được dùng chữ, số, dấu chấm hoặc dấu gạch dưới.',
+                'username' => 'ID tài khoản phải viết liền không dấu và chỉ được dùng chữ thường, số.',
             ]);
     }
 

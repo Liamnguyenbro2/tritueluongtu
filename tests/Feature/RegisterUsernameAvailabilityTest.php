@@ -22,7 +22,7 @@ class RegisterUsernameAvailabilityTest extends TestCase
             ->assertOk()
             ->assertJson(['exists' => true]);
 
-        $this->getJson(route('register.username.lookup', ['username' => 'tran_van.canh']))
+        $this->getJson(route('register.username.lookup', ['username' => 'tranvancanh2026']))
             ->assertOk()
             ->assertJson(['exists' => false]);
     }
@@ -61,12 +61,12 @@ class RegisterUsernameAvailabilityTest extends TestCase
             ->assertSessionHasErrors('username');
     }
 
-    public function test_registration_stores_username_in_lowercase_and_allows_dot_underscore(): void
+    public function test_registration_stores_username_in_lowercase_when_valid(): void
     {
         $this->seed();
 
         $this->post('/register', [
-            'username' => 'Tran_Van.Canh',
+            'username' => 'TranVanCanh',
             'name' => 'New User',
             'email' => 'fresh@example.com',
             'phone' => '0922222222',
@@ -76,8 +76,24 @@ class RegisterUsernameAvailabilityTest extends TestCase
         ])->assertRedirect(route('dashboard'));
 
         $this->assertDatabaseHas('users', [
-            'username' => 'tran_van.canh',
+            'username' => 'tranvancanh',
             'email' => 'fresh@example.com',
         ]);
+    }
+
+    public function test_registration_rejects_username_with_special_characters_or_diacritics(): void
+    {
+        $this->seed();
+
+        $this->from('/register')->post('/register', [
+            'username' => 'trần-văn',
+            'name' => 'New User',
+            'email' => 'invalid-username@example.com',
+            'phone' => '0933333333',
+            'password' => 'Password1@',
+            'password_confirmation' => 'Password1@',
+            'accepted_terms' => '1',
+        ])->assertRedirect('/register')
+            ->assertSessionHasErrors('username');
     }
 }

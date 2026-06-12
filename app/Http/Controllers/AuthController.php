@@ -86,7 +86,7 @@ class AuthController extends Controller
     {
         $username = $this->normalizeUsername((string) $request->query('username', ''));
 
-        if ($username === '' || ! preg_match('/^[a-z0-9._]{4,30}$/', $username)) {
+        if ($username === '' || ! preg_match('/^[a-z0-9]{4,30}$/', $username)) {
             return response()->json(['exists' => false]);
         }
 
@@ -115,7 +115,7 @@ class AuthController extends Controller
                 'string',
                 'min:4',
                 'max:30',
-                'regex:/^[a-z0-9._]+$/',
+                'regex:/^[a-z0-9]+$/',
                 function (string $attribute, mixed $value, \Closure $fail) {
                     $normalized = $this->normalizeUsername((string) $value);
 
@@ -155,7 +155,7 @@ class AuthController extends Controller
         ], [
             'username.required' => 'Vui lòng nhập ID tài khoản.',
             'username.min' => 'ID tài khoản phải có ít nhất 4 ký tự.',
-            'username.regex' => 'ID tài khoản chỉ được dùng chữ, số, dấu chấm hoặc dấu gạch dưới.',
+            'username.regex' => 'ID tài khoản phải viết liền không dấu và chỉ được dùng chữ thường, số.',
             'username.max' => 'ID tài khoản tối đa 30 ký tự.',
             'email.required' => 'Vui lòng nhập email.',
             'email.email' => 'Email phải đúng định dạng có @.',

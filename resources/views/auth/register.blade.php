@@ -21,7 +21,9 @@
                     name="username"
                     inputmode="latin"
                     autocomplete="username"
-                    pattern="[A-Za-z0-9._]{4,30}"
+                    pattern="[a-z0-9]{4,30}"
+                    autocapitalize="off"
+                    spellcheck="false"
                     minlength="4"
                     maxlength="30"
                     placeholder="ID tài khoản"
@@ -30,6 +32,7 @@
                     data-username-input
                     data-username-check-url="{{ route('register.username.lookup') }}"
                 >
+                <span class="px-1 text-[11px] font-medium text-slate-400">Vi&#7871;t li&#7873;n kh&#244;ng d&#7845;u, ch&#7881; d&#249;ng ch&#7919; th&#432;&#7901;ng v&#224; s&#7889;.</span>
                 <span class="hidden px-1 text-xs font-semibold text-slate-400 transition-colors duration-300" data-username-status></span>
                 @error('username')
                     <span class="px-1 text-xs font-semibold text-rose-200">{{ $message }}</span>
@@ -37,6 +40,7 @@
             </label>
             <label class="grid gap-2">
                 <input class="premium-input" name="name" autocomplete="name" maxlength="100" placeholder="Họ tên" value="{{ old('name') }}" required>
+                <span class="px-1 text-[11px] font-medium text-slate-400">Vi&#7871;t &#273;&#7847;y &#273;&#7911; c&#243; d&#7845;u.</span>
                 @error('name')
                     <span class="px-1 text-xs font-semibold text-rose-200">{{ $message }}</span>
                 @enderror
@@ -190,7 +194,7 @@
         let emailController = null;
 
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const usernamePattern = /^[a-z0-9._]{4,30}$/;
+        const usernamePattern = /^[a-z0-9]{4,30}$/;
         const reservedUsernames = new Set([
             'admin',
             'administrator',
@@ -207,7 +211,7 @@
         ]);
 
         const updateSubmitState = () => {
-            const blockedStates = new Set(['checking', 'exists', 'reserved']);
+            const blockedStates = new Set(['checking', 'exists', 'reserved', 'invalid', 'error']);
             submitButton.disabled = blockedStates.has(usernameState) || blockedStates.has(emailState);
         };
 
@@ -242,9 +246,18 @@
                 return;
             }
 
+            const normalizedAsciiUsername = username.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            if (username !== normalizedAsciiUsername || /[^a-z0-9]/.test(username)) {
+                usernameState = 'invalid';
+                paintStatus(usernameStatus, 'ID phải viết liền không dấu và chỉ được dùng chữ thường, số.', 'error');
+                updateSubmitState();
+                return;
+            }
+
             if (!usernamePattern.test(username)) {
                 usernameState = 'invalid';
-                paintStatus(usernameStatus, 'ID phải dài 4-30 ký tự và chỉ gồm chữ, số, dấu chấm hoặc dấu gạch dưới.', 'error');
+                paintStatus(usernameStatus, 'ID phải viết liền không dấu, dài 4-30 ký tự và chỉ gồm chữ thường, số.', 'error');
                 updateSubmitState();
                 return;
             }
@@ -354,6 +367,11 @@
         emailInput.addEventListener('blur', checkEmail);
 
         form.addEventListener('submit', (event) => {
+            if (new Set(['invalid', 'error']).has(usernameState)) {
+                event.preventDefault();
+                paintStatus(usernameStatus, 'ID phải viết liền không dấu và chỉ được dùng chữ thường, số.', 'error');
+            }
+
             if (new Set(['checking', 'exists', 'reserved']).has(usernameState)) {
                 event.preventDefault();
                 paintStatus(usernameStatus, 'ID tài khoản đã được sử dụng.', 'error');
