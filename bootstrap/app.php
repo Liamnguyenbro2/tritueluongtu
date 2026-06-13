@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
             'accountant' => App\Http\Middleware\EnsureUserIsAccountant::class,
             'single_device_session' => App\Http\Middleware\EnsureSingleDeviceSessionIsValid::class,
+            'kyc_completed' => App\Http\Middleware\EnsurePaidUserCompletedKyc::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

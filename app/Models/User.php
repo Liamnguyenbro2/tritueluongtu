@@ -84,6 +84,11 @@ class User extends Authenticatable
         return $this->hasMany(LessonUnlock::class);
     }
 
+    public function kycVerification()
+    {
+        return $this->hasOne(KycVerification::class);
+    }
+
     public function announcementReads()
     {
         return $this->hasMany(AnnouncementRead::class);
@@ -150,6 +155,20 @@ class User extends Authenticatable
         return $this->activeSubscriptionsQuery()
             ->where('grants_full_library', true)
             ->exists();
+    }
+
+    public function hasCompletedKyc(): bool
+    {
+        return $this->kycVerification()->exists();
+    }
+
+    public function requiresKycForPaidAccess(): bool
+    {
+        if ($this->isAdmin() || $this->isAccountant()) {
+            return false;
+        }
+
+        return $this->hasActiveSubscription() && ! $this->hasCompletedKyc();
     }
 
     public function hasUnlockableMonthlyMembership(): bool

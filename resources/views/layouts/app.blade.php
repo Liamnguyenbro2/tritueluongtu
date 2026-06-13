@@ -1,3 +1,10 @@
+@php
+    $authUser = auth()->user();
+    $authSessionMeta = $authUser ? request()->attributes->get('auth_session_client_payload') : null;
+    $kycStatusLabel = $authUser?->hasCompletedKyc() ? '&#272;&#227; c&#7853;p nh&#7853;t' : 'Ch&#432;a c&#7853;p nh&#7853;t';
+    $showKycRequiredModal = $authUser && $authUser->requiresKycForPaidAccess() && ! request()->routeIs('kyc.index');
+    $headerMarqueeText = \App\Models\SiteSetting::headerMarqueeText();
+@endphp
 <!doctype html>
 <html lang="vi" class="dark">
 <head>
@@ -157,7 +164,6 @@
         }
     </style>
 </head>
-{{-- @php($authSessionMeta = auth()->check() ? request()->attributes->get('auth_session_client_payload') : null) --}}
 <body class="min-h-screen overflow-x-hidden bg-night text-white antialiased" x-data="{ sidebarOpen: false, notificationsOpen: false }" x-init="$nextTick(() => lucide.createIcons())">
 <div class="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:72px_72px]"></div>
 
@@ -222,6 +228,15 @@
                     <i data-lucide="wallet" class="h-5 w-5 text-emerald-300"></i><span>Ví số dư</span>
                 </a>
                 @unless(auth()->user()->is_admin)
+                    <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('kyc.index') }}">
+                        <i data-lucide="id-card" class="h-5 w-5 text-cyan-300"></i>
+                        <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                            <span>KYC tài khoản</span>
+                            <span class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold {{ $authUser?->hasCompletedKyc() ? 'bg-emerald-400/10 text-emerald-100' : 'bg-amber-300/10 text-amber-100' }}">
+                                {!! $kycStatusLabel !!}
+                            </span>
+                        </div>
+                    </a>
                     <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('transactions.index') }}">
                         <i data-lucide="receipt-text" class="h-5 w-5 text-sky-300"></i><span>{!! html_entity_decode('L&#7883;ch s&#7917; giao d&#7883;ch') !!}</span>
                     </a>
@@ -239,6 +254,9 @@
                 </a>
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.users.index') }}">
                     <i data-lucide="users" class="h-5 w-5 text-violet-300"></i><span>Quản trị user</span>
+                </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.kyc.index') }}">
+                    <i data-lucide="file-badge-2" class="h-5 w-5 text-cyan-300"></i><span>Quản lý KYC</span>
                 </a>
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.plans.index') }}">
                     <i data-lucide="badge-dollar-sign" class="h-5 w-5 text-emerald-300"></i><span>Quản lý gói</span>
@@ -293,7 +311,6 @@
     @endauth
 </aside>
 
-@php($headerMarqueeText = \App\Models\SiteSetting::headerMarqueeText())
 <div class="relative z-10 min-h-screen max-w-full overflow-x-hidden lg:pl-72">
     <header class="sticky top-0 z-30 border-b border-white/10 bg-night/65 backdrop-blur-2xl">
         <div class="px-4 py-3 sm:px-6 lg:px-10">
@@ -397,6 +414,9 @@
             <div class="mb-6 flex items-center gap-3 rounded-[24px] border border-rose-300/20 bg-rose-500/10 px-5 py-4 text-rose-100 shadow-lg shadow-rose-950/30">
                 <i data-lucide="alert-triangle" class="h-5 w-5"></i>{{ $errors->first() }}
             </div>
+        @endif
+        @if($showKycRequiredModal)
+            @include('partials.kyc-required-modal', ['kycRecord' => $authUser?->kycVerification])
         @endif
         @include('partials.voice-sample-popup')
         @yield('content')

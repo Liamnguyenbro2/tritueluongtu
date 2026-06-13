@@ -276,7 +276,7 @@
         <div class="mb-5 flex items-center justify-between gap-4">
             <div>
                 <p class="text-sm font-semibold uppercase tracking-[.24em] text-violet-200/70">Invoice log</p>
-                <h2 class="mt-2 text-2xl font-black">L&#7883;ch s&#7917; h&#243;a &#273;&#417;n thanh to&#225;n g&#7847;n &#273;&#226;y</h2>
+                <h2 class="mt-2 text-2xl font-black">{!! html_entity_decode('L&#7883;ch s&#7917; h&#243;a &#273;&#417;n thanh to&#225;n g&#7847;n &#273;&#226;y') !!}</h2>
             </div>
             <i data-lucide="receipt-text" class="h-6 w-6 text-violet-200"></i>
         </div>
@@ -285,13 +285,13 @@
             <table class="w-full min-w-[760px] text-left text-sm">
                 <thead class="text-xs uppercase tracking-[.18em] text-slate-500">
                 <tr>
-                    <th class="py-3">M&#227;</th>
-                    <th>G&#243;i</th>
-                    <th>B&#224;i h&#7885;c</th>
-                    <th>Ph&#432;&#417;ng th&#7913;c</th>
-                    <th>S&#7889; ti&#7873;n</th>
-                    <th>Tr&#7841;ng th&#225;i</th>
-                    <th>Ng&#224;y t&#7841;o</th>
+                    <th class="py-3">{!! html_entity_decode('M&#227;') !!}</th>
+                    <th>{!! html_entity_decode('G&#243;i') !!}</th>
+                    <th>{!! html_entity_decode('B&#224;i h&#7885;c') !!}</th>
+                    <th>{!! html_entity_decode('Ph&#432;&#417;ng th&#7913;c') !!}</th>
+                    <th>{!! html_entity_decode('S&#7889; ti&#7873;n') !!}</th>
+                    <th>{!! html_entity_decode('Tr&#7841;ng th&#225;i') !!}</th>
+                    <th>{!! html_entity_decode('Ng&#224;y t&#7841;o') !!}</th>
                     <th></th>
                 </tr>
                 </thead>
@@ -299,8 +299,12 @@
                 @forelse($orders as $order)
                     @php
                         $method = data_get($order->metadata, 'payment_method', 'bank_qr');
-                        $methodLabel = $method === 'wallet' ? 'V&#237; s&#7889; d&#432;' : 'QR ng&#226;n h&#224;ng';
-                        $statusLabel = $order->status === 'paid' ? '&#272;&#227; thanh to&#225;n' : '&#272;ang ch&#7901;';
+                        $methodLabel = $method === 'wallet'
+                            ? html_entity_decode('V&#237; s&#7889; d&#432;')
+                            : html_entity_decode('QR ng&#226;n h&#224;ng');
+                        $statusLabel = $order->status === 'paid'
+                            ? html_entity_decode('&#272;&#227; thanh to&#225;n')
+                            : html_entity_decode('&#272;ang ch&#7901;');
                         $selectedLesson = data_get($order->metadata, 'selected_lesson_title');
                     @endphp
                     <tr class="text-slate-300 transition hover:bg-white/[.04]">
@@ -315,11 +319,11 @@
                             </span>
                         </td>
                         <td>{{ $order->created_at->format('d/m/Y H:i') }}</td>
-                        <td><a class="text-violet-200 hover:text-white" href="{{ route('billing.orders.show', $order) }}">Chi ti&#7871;t</a></td>
+                        <td><a class="text-violet-200 hover:text-white" href="{{ route('billing.orders.show', $order) }}">{!! html_entity_decode('Chi ti&#7871;t') !!}</a></td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="py-8 text-center text-slate-400">Ch&#432;a c&#243; h&#243;a &#273;&#417;n thanh to&#225;n.</td>
+                        <td colspan="8" class="py-8 text-center text-slate-400">{!! html_entity_decode('Ch&#432;a c&#243; h&#243;a &#273;&#417;n thanh to&#225;n.') !!}</td>
                     </tr>
                 @endforelse
                 </tbody>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountSuspension;
 use App\Models\LedgerEntry;
+use App\Models\KycVerification;
 use App\Models\PaymentOrder;
 use App\Models\Referral;
 use App\Models\ReferralLink;
@@ -25,6 +26,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
 {
@@ -157,6 +159,62 @@ class AdminController extends Controller
             'wallet' => $wallets->walletForUser($user),
             'transactions' => $transactions,
             'activePlanLabel' => $this->activePlanLabel($user),
+        ]);
+    }
+
+    public function kycIndex(Request $request): View
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $records = $this->kycQuery($search)
+            ->latest('submitted_at')
+            ->latest('id')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.kyc.index', [
+            'records' => $records,
+            'search' => $search,
+            'stats' => [
+                'total' => KycVerification::query()->count(),
+                'submitted_today' => KycVerification::query()->whereDate('submitted_at', today())->count(),
+            ],
+        ]);
+    }
+
+    public function kycExport(Request $request): StreamedResponse
+    {
+        $search = trim((string) $request->query('q', ''));
+        $rows = $this->kycQuery($search)
+            ->latest('submitted_at')
+            ->latest('id')
+            ->get();
+
+        $filename = 'kyc-list-'.now()->format('Y-m-d-His').'.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'wb');
+
+            if ($handle === false) {
+                return;
+            }
+
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['ID tai khoan', 'Ho ten', 'So CCCD', 'Dia chi', 'Ngay gui']);
+
+            foreach ($rows as $record) {
+                fputcsv($handle, [
+                    $record->user?->username ?? '#'.$record->user_id,
+                    $record->full_name,
+                    $record->citizen_id,
+                    $record->address,
+                    optional($record->submitted_at)->format('d/m/Y H:i'),
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
@@ -582,6 +640,24 @@ class AdminController extends Controller
             'yearly' => 'Gói năm',
             default => 'Chưa kích hoạt',
         };
+    }
+
+    private function kycQuery(string $search)
+    {
+        return KycVerification::query()
+            ->with('user')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery
+                        ->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('citizen_id', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery
+                                ->where('username', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
+            });
     }
 
     public function suspend(Request $request, User $user): RedirectResponse

@@ -126,6 +126,7 @@ class PaymentWebhookTest extends TestCase
         $lesson = Lesson::query()->where('is_trial', false)->orderBy('position')->firstOrFail();
         $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
         app(PaymentProcessor::class)->complete($order, 'BANK-ACTIVE');
+        $this->completeKyc($user);
 
         $this->actingAs($user)->post(route('lessons.toggle', $lesson));
 
@@ -162,6 +163,7 @@ class PaymentWebhookTest extends TestCase
         $trialLesson = Lesson::query()->where('is_trial', true)->orderBy('position')->firstOrFail();
         $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
         app(PaymentProcessor::class)->complete($order, 'BANK-TRIAL-ACTIVE');
+        $this->completeKyc($user);
 
         $this->actingAs($user)
             ->post(route('lessons.toggle', $trialLesson))
@@ -214,6 +216,7 @@ class PaymentWebhookTest extends TestCase
         $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, $plan->price_vnd);
 
         app(PaymentProcessor::class)->complete($order, 'BANK-MONTHLY-NEW');
+        $this->completeKyc($user);
 
         $subscription = Subscription::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
 
@@ -222,5 +225,18 @@ class PaymentWebhookTest extends TestCase
         $this->actingAs($user)
             ->post(route('lessons.toggle', Lesson::query()->where('is_trial', false)->firstOrFail()))
             ->assertForbidden();
+    }
+
+    private function completeKyc(User $user): void
+    {
+        $user->kycVerification()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'full_name' => 'Nguyen Van A',
+                'citizen_id' => '012345678901',
+                'address' => '123 Duong ABC, Phuong 1, Quan 1, TP HCM',
+                'submitted_at' => now(),
+            ]
+        );
     }
 }

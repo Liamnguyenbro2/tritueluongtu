@@ -34,6 +34,7 @@ class MonthlyLessonUnlockFlowTest extends TestCase
             'status' => 'active',
             'grants_full_library' => true,
         ]);
+        $this->completeKyc($user);
 
         $this->actingAs($user)
             ->get(route('dashboard'))
@@ -104,6 +105,7 @@ class MonthlyLessonUnlockFlowTest extends TestCase
         $subscription = Subscription::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
         $order = PaymentOrder::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
         $unlock = LessonUnlock::query()->where('user_id', $user->id)->where('lesson_id', $lessonA->id)->firstOrFail();
+        $this->completeKyc($user);
 
         $this->assertSame((int) $lessonA->unlock_price_vnd, (int) $order->amount_vnd);
         $this->assertSame($subscription->ends_at->toDateTimeString(), $unlock->expires_at?->toDateTimeString());
@@ -245,6 +247,7 @@ class MonthlyLessonUnlockFlowTest extends TestCase
             'unlocked_at' => now()->subDay(),
             'expires_at' => $subscription->ends_at,
         ]);
+        $this->completeKyc($user);
 
         $this->actingAs($user)->post(route('lessons.toggle', $lesson))->assertRedirect();
 
@@ -264,5 +267,18 @@ class MonthlyLessonUnlockFlowTest extends TestCase
         $this->assertSame('2026-06-14 10:00:00', $access->fresh()->expires_at->toDateTimeString());
 
         Carbon::setTestNow();
+    }
+
+    private function completeKyc(User $user): void
+    {
+        $user->kycVerification()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'full_name' => 'Nguyen Van A',
+                'citizen_id' => '012345678901',
+                'address' => '123 Duong ABC, Phuong 1, Quan 1, TP HCM',
+                'submitted_at' => now(),
+            ]
+        );
     }
 }

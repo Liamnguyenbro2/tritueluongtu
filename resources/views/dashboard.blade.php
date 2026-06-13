@@ -136,6 +136,11 @@
                             </p>
                             <p class="mt-1 text-xs text-slate-300">Hết hạn: {{ $activeSubscription->ends_at->format('d/m/Y H:i') }}</p>
                         </div>
+                    @elseif($requiresKycForPaidAccess)
+                        <div class="mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3">
+                            <p class="text-sm font-semibold text-amber-100">B&#7841;n c&#7847;n ho&#224;n th&#224;nh KYC</p>
+                            <p class="mt-1 text-xs text-slate-300">D&#7883;ch v&#7909; tr&#7843; ph&#237; &#273;ang t&#7841;m kh&#243;a cho &#273;&#7871;n khi b&#7841;n g&#7917;i xong th&#244;ng tin KYC.</p>
+                        </div>
                     @elseif($hasPerLessonMonthlyUnlocks)
                         <div class="mt-3 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-3">
                             <p class="text-sm font-semibold text-violet-100">G&#243;i th&#225;ng theo t&#7915;ng kh&#243;a &#273;ang ho&#7841;t &#273;&#7897;ng</p>
@@ -207,6 +212,11 @@
                             <div class="absolute left-2 top-2 rounded-xl border border-white/20 bg-black/35 px-2 py-1 text-xs font-bold backdrop-blur-xl sm:left-4 sm:top-4 sm:rounded-2xl sm:px-3 sm:text-sm">{{ str_pad($lesson['position'], 2, '0', STR_PAD_LEFT) }}</div>
                             @if($lesson['locked'])
                                 <div class="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-xl bg-black/45 backdrop-blur-xl sm:right-4 sm:top-4 sm:h-10 sm:w-10 sm:rounded-2xl"><i data-lucide="lock" class="h-4 w-4 text-white sm:h-5 sm:w-5"></i></div>
+                            @elseif($lesson['requires_kyc'] ?? false)
+                                <div class="inline-flex items-center gap-1.5 rounded-full border border-amber-200/20 bg-amber-300/10 px-2 py-1 text-[10px] font-bold text-amber-100 sm:gap-2 sm:px-3 sm:text-xs">
+                                    <i data-lucide="shield-alert" class="h-3 w-3 sm:h-3.5 sm:w-3.5"></i>
+                                    KYC b&#7855;t bu&#7897;c
+                                </div>
                             @endif
                         </div>
                     </button>
@@ -281,6 +291,10 @@
                                         Mở khóa {{ number_format($lesson['unlock_price_vnd'], 0, ',', '.') }} đ
                                     </button>
                                 </form>
+                            @elseif($lesson['requires_kyc'] ?? false)
+                                <a class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r from-amber-400 to-violet-500 px-3 py-3 text-xs font-bold transition hover:shadow-glow sm:gap-2 sm:px-4 sm:text-sm" href="{{ route('kyc.index') }}">
+                                    <i data-lucide="shield-check" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Ho&#224;n t&#7845;t KYC
+                                </a>
                             @elseif($lesson['can_activate'])
                                 <form class="flex-1" method="post" action="{{ route('lessons.toggle', $lesson['id']) }}">
                                     @csrf

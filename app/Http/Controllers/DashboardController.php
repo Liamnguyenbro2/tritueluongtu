@@ -17,6 +17,7 @@ class DashboardController extends Controller
         $user = $request->user();
         $isAdmin = $user->isAdmin();
         $hasFullLibrarySubscriptionAccess = ! $isAdmin && $user->hasFullLibrarySubscriptionAccess();
+        $requiresKycForPaidAccess = ! $isAdmin && $user->requiresKycForPaidAccess();
         $activeSubscription = $user->activeSubscription();
         $activeMonthlySubscription = $user->activeMonthlySubscription();
         $latestMonthlySubscription = $user->latestSubscription(config('quantum.plans.monthly_code'));
@@ -42,6 +43,7 @@ class DashboardController extends Controller
         $lessons = Lesson::query()->orderBy('position')->get()->map(function (Lesson $lesson) use (
             $isAdmin,
             $hasFullLibrarySubscriptionAccess,
+            $requiresKycForPaidAccess,
             $activeMonthlySubscription,
             $latestMonthlySubscription,
             $accessByLessonId,
@@ -71,6 +73,12 @@ class DashboardController extends Controller
                 && $latestMonthlySubscription?->ends_at
                 && $latestMonthlySubscription->ends_at->lte(now());
             $canToggle = ! $isAdmin && ! $usesTrialFlow && ($hasLessonEntitlement || $paidAccessActive);
+            $requiresKyc = $requiresKycForPaidAccess
+                && ! $usesTrialFlow
+                && ($hasLessonEntitlement || $paidAccessActive);
+            $mediaUrl = $lesson->video_source_type === 'embed'
+                ? route('lessons.player', $lesson)
+                : ($lesson->media_path ? route('lessons.media', $lesson) : null);
 
             return [
                 'id' => $lesson->id,
@@ -79,15 +87,14 @@ class DashboardController extends Controller
                 'description' => $lesson->description,
                 'thumbnail_url' => $lesson->thumbnail_path ? route('lessons.thumbnail', $lesson) : null,
                 'media_type' => $lesson->video_source_type === 'embed' ? 'embed-video' : $lesson->media_type,
-                'media_url' => $lesson->video_source_type === 'embed'
-                    ? route('lessons.player', $lesson)
-                    : ($lesson->media_path ? route('lessons.media', $lesson) : null),
-                'locked' => ! $isActive,
+                'media_url' => $requiresKyc ? null : $mediaUrl,
+                'locked' => $requiresKyc ? true : ! $isActive,
                 'trial' => $usesTrialFlow,
-                'active' => $isActive,
-                'can_activate' => $canToggle,
+                'active' => $requiresKyc ? false : $isActive,
+                'can_activate' => $requiresKyc ? false : $canToggle,
                 'can_unlock' => false,
-                'requires_membership_upgrade' => ! $isAdmin && ! $usesTrialFlow && ! $canToggle,
+                'requires_membership_upgrade' => $requiresKyc ? false : (! $isAdmin && ! $usesTrialFlow && ! $canToggle),
+                'requires_kyc' => $requiresKyc,
                 'unlock_price_vnd' => (int) $lesson->unlock_price_vnd,
                 'is_unlocked_lesson' => $lessonUnlockActive,
                 'expires_at' => $expiresAt?->toIso8601String(),
@@ -106,7 +113,8 @@ class DashboardController extends Controller
             'activeSubscription',
             'activeMonthlySubscription',
             'hasPerLessonMonthlyUnlocks',
-            'pendingAnnouncements'
+            'pendingAnnouncements',
+            'requiresKycForPaidAccess'
         ));
     }
 

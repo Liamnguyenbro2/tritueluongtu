@@ -13,6 +13,7 @@ use App\Http\Controllers\BankWebhookController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ForgotPasswordOtpController;
+use App\Http\Controllers\KycController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProtectedLessonMediaController;
 use App\Http\Controllers\ProfileController;
@@ -43,6 +44,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/kyc', [KycController::class, 'index'])->name('kyc.index');
+    Route::get('/kyc/status', [KycController::class, 'status'])->name('kyc.status');
+    Route::post('/kyc', [KycController::class, 'store'])->name('kyc.store');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
@@ -52,10 +56,10 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::post('/announcements/{announcement}/read', [NotificationController::class, 'readAnnouncement'])->name('announcements.read');
     Route::get('/members', [AffiliateController::class, 'index'])->name('affiliate.index');
     Route::post('/lessons/{lesson}/unlock', [DashboardController::class, 'unlock'])->name('lessons.unlock');
-    Route::post('/lessons/{lesson}/toggle', [DashboardController::class, 'toggle'])->name('lessons.toggle');
+    Route::post('/lessons/{lesson}/toggle', [DashboardController::class, 'toggle'])->middleware('kyc_completed')->name('lessons.toggle');
     Route::get('/lessons/{lesson}/thumbnail', [ProtectedLessonMediaController::class, 'thumbnail'])->name('lessons.thumbnail');
-    Route::get('/lessons/{lesson}/media', [ProtectedLessonMediaController::class, 'media'])->name('lessons.media');
-    Route::get('/lessons/{lesson}/player', [ProtectedLessonMediaController::class, 'player'])->name('lessons.player');
+    Route::get('/lessons/{lesson}/media', [ProtectedLessonMediaController::class, 'media'])->middleware('kyc_completed')->name('lessons.media');
+    Route::get('/lessons/{lesson}/player', [ProtectedLessonMediaController::class, 'player'])->middleware('kyc_completed')->name('lessons.player');
     Route::get('/plans/{plan}/qr-image', [BillingController::class, 'qrImage'])->name('plans.qr-image');
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing/orders', [BillingController::class, 'store'])->name('billing.orders.store');
@@ -72,6 +76,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/', [AdminController::class, 'index'])->name('index');
     Route::get('/users', [AdminController::class, 'users'])->name('users.index');
     Route::get('/users/{user}', [AdminController::class, 'userShow'])->name('users.show');
+    Route::get('/kyc', [AdminController::class, 'kycIndex'])->name('kyc.index');
+    Route::get('/kyc/export', [AdminController::class, 'kycExport'])->name('kyc.export');
     Route::get('/shared-pool', [AdminController::class, 'sharedPoolHistory'])->name('shared-pool.history');
     Route::put('/branding', [AdminController::class, 'updateBranding'])->name('branding.update');
     Route::post('/wallet-transfer', [AdminController::class, 'transferToUser'])->name('wallet-transfer');
