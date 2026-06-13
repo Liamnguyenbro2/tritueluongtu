@@ -175,6 +175,45 @@ class AdminUserManagementTest extends TestCase
             ->assertDontSeeText($alphaUser->username);
     }
 
+    public function test_admin_dashboard_recent_users_search_supports_username_and_recovers_from_far_page(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        foreach (range(1, 12) as $index) {
+            User::query()->create([
+                'username' => 'dashuser'.$index,
+                'name' => 'Dash User '.$index,
+                'email' => "dash{$index}@example.com",
+                'phone' => '09610000'.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+                'password' => 'password',
+                'role' => 'user',
+            ]);
+        }
+
+        $targetUser = User::query()->create([
+            'username' => 'liamnguyen',
+            'name' => 'Liam Nguyen',
+            'email' => 'liam@example.com',
+            'phone' => '0961999999',
+            'password' => 'password',
+            'role' => 'user',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.index', ['q' => 'liam@example.com', 'page' => 10]))
+            ->assertOk()
+            ->assertSeeText($targetUser->email)
+            ->assertSeeText($targetUser->username);
+
+        $this->actingAs($admin)
+            ->get(route('admin.index', ['q' => 'liamnguyen', 'page' => 10]))
+            ->assertOk()
+            ->assertSeeText($targetUser->email)
+            ->assertSeeText($targetUser->username);
+    }
+
     public function test_non_admin_cannot_access_admin_user_management_routes(): void
     {
         $this->seed();

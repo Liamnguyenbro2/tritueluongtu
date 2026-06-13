@@ -53,12 +53,28 @@ class AdminController extends Controller
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
                         ->where('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%");
                 });
             })
             ->latest()
             ->paginate(10)
             ->withQueryString();
+
+        if ($users->total() > 0 && $users->isEmpty() && $users->currentPage() > 1) {
+            $users = User::query()
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery
+                            ->where('email', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('username', 'like', "%{$search}%");
+                    });
+                })
+                ->latest()
+                ->paginate(10, ['*'], 'page', 1)
+                ->withQueryString();
+        }
 
         return view('admin.index', [
             'users' => $users,
@@ -115,6 +131,30 @@ class AdminController extends Controller
             ->latest()
             ->paginate(10)
             ->withQueryString();
+
+        if ($users->total() > 0 && $users->isEmpty() && $users->currentPage() > 1) {
+            $users = (clone $regularUsers)
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery
+                            ->where('email', 'like', "%{$search}%")
+                            ->orWhere('username', 'like', "%{$search}%");
+                    });
+                })
+                ->with([
+                    'wallet',
+                    'subscriptions' => function ($query) {
+                        $query->with('plan')
+                            ->where('status', 'active')
+                            ->where('starts_at', '<=', now())
+                            ->where('ends_at', '>', now())
+                            ->orderByDesc('ends_at');
+                    },
+                ])
+                ->latest()
+                ->paginate(10, ['*'], 'page', 1)
+                ->withQueryString();
+        }
 
         return view('admin.users.index', [
             'users' => $users,
