@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AccountantController extends Controller
 {
@@ -162,16 +163,15 @@ class AccountantController extends Controller
 
     public function withdrawals(Request $request): View
     {
-        $withdrawals = WithdrawalRequest::query()
-            ->with(['user:id,name,email', 'bankAccount'])
+        $withdrawals = $this->withdrawalsQuery($request)
             ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')))
             ->when($request->filled('user'), function (Builder $query) use ($request) {
                 $term = trim((string) $request->string('user'));
                 $query->whereHas('user', fn (Builder $userQuery) => $userQuery
                     ->where('email', 'like', "%{$term}%")
-                    ->orWhere('name', 'like', "%{$term}%"));
+                    ->orWhere('name', 'like', "%{$term}%")
+                    ->orWhere('username', 'like', "%{$term}%"));
             })
-            ->latest()
             ->paginate(20)
             ->withQueryString();
 
@@ -185,7 +185,61 @@ class AccountantController extends Controller
                 ->get()
                 ->groupBy('target_id'),
             'filters' => $request->only(['status', 'user']),
+            'exportDate' => $this->resolvedWithdrawalExportDate($request)->format('Y-m-d'),
+            'exportDateMin' => now()->subDays(6)->format('Y-m-d'),
+            'exportDateMax' => now()->format('Y-m-d'),
         ]);
+    }
+
+    public function exportWithdrawals(Request $request, SimpleXlsxExporter $xlsx, AccountantAuditLogService $auditLogs): BinaryFileResponse
+    {
+        $exportDate = $this->resolvedWithdrawalExportDate($request);
+        $start = $exportDate->copy()->startOfDay();
+        $end = $exportDate->copy()->endOfDay();
+
+        $withdrawals = WithdrawalRequest::query()
+            ->with([
+                'user:id,username,email',
+                'user.kycVerification:user_id,full_name,citizen_id,address',
+                'bankAccount:id,user_id,bank_name,account_number',
+            ])
+            ->whereBetween('created_at', [$start, $end])
+            ->orderBy('withdrawal_number')
+            ->orderBy('id')
+            ->get();
+
+        $rows = $withdrawals->map(fn (WithdrawalRequest $withdrawal) => [
+            'STT' => (int) $withdrawal->withdrawal_number,
+            'ID Tài khoản' => $withdrawal->user?->username ?? '-',
+            'Số CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
+            'Họ tên CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            'Ngân hàng' => $withdrawal->bankAccount?->bank_name ?? '-',
+            'STK Ngân hàng' => $withdrawal->bankAccount?->account_number ?? '-',
+            'Thời gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
+            'Trạng thái' => $this->withdrawalStatusLabel($withdrawal->status),
+        ])->values()->all();
+
+        $rows = $withdrawals
+            ->map(fn (WithdrawalRequest $withdrawal) => $this->withdrawalExportRowUtf8($withdrawal))
+            ->values()
+            ->all();
+
+        $auditLogs->record(
+            $request->user(),
+            'withdrawal.export.xlsx',
+            'Da xuat Excel yeu cau rut tien',
+            null,
+            'ID tai khoan: '.($request->user()->username ?? $request->user()->email)
+            .PHP_EOL.'Ngay du lieu: '.$exportDate->format('d/m/Y')
+            .PHP_EOL.'So ban ghi: '.$withdrawals->count()
+            .PHP_EOL.'Thoi gian thuc hien: '.now()->format('d/m/Y H:i:s')
+        );
+
+        $filename = 'withdrawals_'.$exportDate->format('d-m-Y').'.xlsx';
+
+        return response()
+            ->download($xlsx->build('Withdrawals', $rows), $filename)
+            ->deleteFileAfterSend();
     }
 
     public function approveWithdrawal(Request $request, WithdrawalRequest $withdrawal, WalletLedgerService $wallets, TransactionLogService $transactionLogs, AccountantAuditLogService $auditLogs): RedirectResponse
@@ -602,5 +656,95 @@ class AccountantController extends Controller
     private function money(int $amount): string
     {
         return number_format($amount, 0, ',', '.').'d';
+    }
+
+    private function withdrawalsQuery(Request $request): Builder
+    {
+        return WithdrawalRequest::query()
+            ->with([
+                'user:id,username,name,email',
+                'user.kycVerification:user_id,full_name,citizen_id,address',
+                'bankAccount:id,user_id,bank_name,account_number',
+            ])
+            ->orderByDesc('withdrawal_number')
+            ->orderByDesc('id');
+    }
+
+    private function withdrawalExportRow(WithdrawalRequest $withdrawal): array
+    {
+        return [
+            'STT' => (int) $withdrawal->withdrawal_number,
+            'ID Tài khoản' => $withdrawal->user?->username ?? '-',
+            'Số CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
+            'Họ tên CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            'Ngân hàng' => $withdrawal->bankAccount?->bank_name ?? '-',
+            'STK Ngân hàng' => $withdrawal->bankAccount?->account_number ?? '-',
+            'Thời gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
+            'Trạng thái' => match ($withdrawal->status) {
+                'pending' => 'Chờ duyệt',
+                'approved' => 'Đang xử lý',
+                'transferred' => 'Hoàn thành',
+                'rejected' => 'Từ chối',
+                default => 'Khác',
+            },
+        ];
+    }
+
+    private function withdrawalExportRowUtf8(WithdrawalRequest $withdrawal): array
+    {
+        return [
+            'STT' => (int) $withdrawal->withdrawal_number,
+            html_entity_decode('ID T&#224;i kho&#7843;n') => $withdrawal->user?->username ?? '-',
+            html_entity_decode('S&#7889; CCCD') => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
+            html_entity_decode('H&#7885; t&#234;n CCCD') => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            html_entity_decode('Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->bank_name ?? '-',
+            html_entity_decode('STK Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->account_number ?? '-',
+            html_entity_decode('Th&#7901;i gian') => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
+            html_entity_decode('Tr&#7841;ng th&#225;i') => match ($withdrawal->status) {
+                'pending' => html_entity_decode('Ch&#7901; duy&#7879;t'),
+                'approved' => html_entity_decode('&#272;ang x&#7917; l&#253;'),
+                'transferred' => html_entity_decode('Ho&#224;n th&#224;nh'),
+                'rejected' => html_entity_decode('T&#7915; ch&#7889;i'),
+                default => html_entity_decode('Kh&#225;c'),
+            },
+        ];
+    }
+
+    private function resolvedWithdrawalExportDate(Request $request): Carbon
+    {
+        $data = $request->validate([
+            'export_date' => [
+                'nullable',
+                'date_format:Y-m-d',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    $date = Carbon::createFromFormat('Y-m-d', (string) $value)->startOfDay();
+                    $today = now()->startOfDay();
+                    $minDate = now()->subDays(6)->startOfDay();
+
+                    if ($date->lt($minDate) || $date->gt($today)) {
+                        $fail('Chỉ được xuất dữ liệu trong vòng 7 ngày gần nhất.');
+                    }
+                },
+            ],
+        ]);
+
+        $value = $data['export_date'] ?? now()->format('Y-m-d');
+
+        return Carbon::createFromFormat('Y-m-d', $value);
+    }
+
+    private function withdrawalStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'pending' => 'Chờ duyệt',
+            'approved' => 'Đang xử lý',
+            'transferred' => 'Hoàn thành',
+            'rejected' => 'Từ chối',
+            default => 'Khác',
+        };
     }
 }

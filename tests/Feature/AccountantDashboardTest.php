@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Models\Plan;
 use App\Models\TransactionLog;
 use App\Models\User;
+use App\Models\WithdrawalRequest;
 use App\Services\WalletLedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use ZipArchive;
 
 class AccountantDashboardTest extends TestCase
 {
@@ -140,5 +143,80 @@ class AccountantDashboardTest extends TestCase
             ->get(route('accountant.reports.export', ['format' => 'csv']))
             ->assertOk()
             ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+    }
+
+    public function test_accountant_can_export_withdrawals_xlsx_for_recent_date_and_audit_is_logged(): void
+    {
+        $this->seed();
+
+        $accountant = User::query()->where('email', 'accountant@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $user->kycVerification()->create([
+            'full_name' => 'Nguyen Van A',
+            'citizen_id' => '012345678901',
+            'address' => '123 Duong ABC',
+            'submitted_at' => now(),
+        ]);
+
+        $bankAccount = DB::table('bank_accounts')->where('user_id', $user->id)->first();
+        if (! $bankAccount) {
+            $this->actingAs($user)->post('/wallet/bank-account', [
+                'bank_name' => 'MB Bank',
+                'account_number' => '123456789',
+                'account_holder' => 'NGUYEN VAN A',
+            ]);
+            $bankAccount = DB::table('bank_accounts')->where('user_id', $user->id)->first();
+        }
+
+        WithdrawalRequest::query()->create([
+            'withdrawal_number' => 1,
+            'user_id' => $user->id,
+            'bank_account_id' => $bankAccount->id,
+            'amount_vnd' => 100000,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($accountant)
+            ->get(route('accountant.withdrawals.export', ['export_date' => now()->format('Y-m-d')]));
+
+        $response
+            ->assertOk()
+            ->assertDownload('withdrawals_'.now()->format('d-m-Y').'.xlsx');
+
+        $path = $response->baseResponse->getFile()->getPathname();
+        $zip = new ZipArchive();
+        $this->assertTrue($zip->open($path) === true);
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $stylesXml = $zip->getFromName('xl/styles.xml');
+        $zip->close();
+
+        $this->assertNotFalse($sheetXml);
+        $this->assertNotFalse($stylesXml);
+        $this->assertStringContainsString('ID Tài khoản', $sheetXml);
+        $this->assertStringContainsString('012345678901', $sheetXml);
+        $this->assertStringContainsString('Nguyen Van A', $sheetXml);
+        $this->assertStringContainsString('Chờ duyệt', $sheetXml);
+        $this->assertStringContainsString('<cols>', $sheetXml);
+        $this->assertStringContainsString('fontId="1"', $stylesXml);
+
+        $this->assertDatabaseHas('accountant_audit_logs', [
+            'actor_user_id' => $accountant->id,
+            'action' => 'withdrawal.export.xlsx',
+        ]);
+    }
+
+    public function test_withdrawal_export_rejects_dates_older_than_seven_days(): void
+    {
+        $this->seed();
+
+        $accountant = User::query()->where('email', 'accountant@example.com')->firstOrFail();
+
+        $this->actingAs($accountant)
+            ->from(route('accountant.withdrawals.index'))
+            ->get(route('accountant.withdrawals.export', ['export_date' => now()->subDays(7)->format('Y-m-d')]))
+            ->assertRedirect(route('accountant.withdrawals.index'))
+            ->assertSessionHasErrors('export_date');
     }
 }

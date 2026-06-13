@@ -106,7 +106,10 @@ class WalletController extends Controller
         }
 
         DB::transaction(function () use ($request, $data, $wallet, $wallets) {
+            $nextWithdrawalNumber = ((int) WithdrawalRequest::query()->max('withdrawal_number')) + 1;
+
             $withdrawal = WithdrawalRequest::query()->create([
+                'withdrawal_number' => $nextWithdrawalNumber,
                 'user_id' => $request->user()->id,
                 'bank_account_id' => $data['bank_account_id'],
                 'amount_vnd' => $data['amount_vnd'],

@@ -120,6 +120,7 @@ Route::middleware(['auth', 'accountant'])->prefix('accountant')->name('accountan
     Route::get('/transactions/{transaction}', [AccountantController::class, 'transactionShow'])->name('transactions.show');
     Route::get('/transactions/{transaction}/invoice', [AccountantController::class, 'transactionInvoice'])->name('transactions.invoice');
     Route::get('/withdrawals', [AccountantController::class, 'withdrawals'])->name('withdrawals.index');
+    Route::get('/withdrawals/export/xlsx', [AccountantController::class, 'exportWithdrawals'])->name('withdrawals.export');
     Route::post('/withdrawals/{withdrawal}/approve', [AccountantController::class, 'approveWithdrawal'])->name('withdrawals.approve');
     Route::post('/withdrawals/{withdrawal}/reject', [AccountantController::class, 'rejectWithdrawal'])->name('withdrawals.reject');
     Route::post('/withdrawals/{withdrawal}/mark-transferred', [AccountantController::class, 'markTransferred'])->name('withdrawals.mark-transferred');

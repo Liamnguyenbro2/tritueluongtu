@@ -10,6 +10,8 @@ class SimpleXlsxExporter
 {
     public function build(string $worksheetName, array $rows): string
     {
+        [$normalizedRows, $columnWidths] = $this->normalizeRows($rows);
+
         $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_');
 
         if ($tempFile === false) {
@@ -29,7 +31,7 @@ class SimpleXlsxExporter
         $zip->addFromString('xl/workbook.xml', $this->workbookXml($worksheetName));
         $zip->addFromString('xl/_rels/workbook.xml.rels', $this->workbookRelationshipsXml());
         $zip->addFromString('xl/styles.xml', $this->stylesXml());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $this->worksheetXml($rows));
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->worksheetXml($normalizedRows, $columnWidths));
         $zip->close();
 
         return $tempFile;
@@ -118,8 +120,9 @@ XML;
         return <<<'XML'
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-    <fonts count="1">
+    <fonts count="2">
         <font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font>
+        <font><b/><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font>
     </fonts>
     <fills count="1">
         <fill><patternFill patternType="none"/></fill>
@@ -130,8 +133,9 @@ XML;
     <cellStyleXfs count="1">
         <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
     </cellStyleXfs>
-    <cellXfs count="1">
+    <cellXfs count="2">
         <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+        <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
     </cellXfs>
     <cellStyles count="1">
         <cellStyle name="Normal" xfId="0" builtinId="0"/>
@@ -140,7 +144,7 @@ XML;
 XML;
     }
 
-    private function worksheetXml(array $rows): string
+    private function worksheetXml(array $rows, array $columnWidths): string
     {
         $sheetRows = [];
 
@@ -149,15 +153,18 @@ XML;
 
             foreach (array_values($columns) as $columnIndex => $value) {
                 $cellReference = $this->columnName($columnIndex + 1).($rowIndex + 1);
-                $cells[] = $this->cellXml($cellReference, $value);
+                $cells[] = $this->cellXml($cellReference, $value, $rowIndex === 0 ? 1 : 0);
             }
 
             $sheetRows[] = '<row r="'.($rowIndex + 1).'">'.implode('', $cells).'</row>';
         }
 
+        $cols = $this->worksheetColumnsXml($columnWidths);
+
         return <<<XML
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    {$cols}
     <sheetData>
         {$this->implodeXml($sheetRows)}
     </sheetData>
@@ -165,17 +172,83 @@ XML;
 XML;
     }
 
-    private function cellXml(string $reference, mixed $value): string
+    private function cellXml(string $reference, mixed $value, int $styleId = 0): string
     {
         if (is_int($value) || is_float($value)) {
-            return '<c r="'.$reference.'"><v>'.$value.'</v></c>';
+            return '<c r="'.$reference.'" s="'.$styleId.'"><v>'.$value.'</v></c>';
         }
 
         if ($value instanceof DateTimeInterface) {
-            $value = $value->format('d/m/Y H:i');
+            $value = $value->format('d/m/Y H:i:s');
         }
 
-        return '<c r="'.$reference.'" t="inlineStr"><is><t>'.$this->xml((string) $value).'</t></is></c>';
+        return '<c r="'.$reference.'" s="'.$styleId.'" t="inlineStr"><is><t>'.$this->xml((string) $value).'</t></is></c>';
+    }
+
+    private function normalizeRows(array $rows): array
+    {
+        if ($rows === []) {
+            return [[], []];
+        }
+
+        $firstRow = $rows[0];
+        $isAssociative = is_array($firstRow) && array_keys($firstRow) !== range(0, count($firstRow) - 1);
+
+        if ($isAssociative) {
+            $headers = array_keys($firstRow);
+            $normalizedRows = [array_values($headers)];
+
+            foreach ($rows as $row) {
+                $normalizedRows[] = array_map(
+                    fn (string $key) => $row[$key] ?? '',
+                    $headers
+                );
+            }
+        } else {
+            $normalizedRows = array_map(
+                fn ($row) => is_array($row) ? array_values($row) : [(string) $row],
+                $rows
+            );
+        }
+
+        return [$normalizedRows, $this->calculateColumnWidths($normalizedRows)];
+    }
+
+    private function calculateColumnWidths(array $rows): array
+    {
+        $widths = [];
+
+        foreach ($rows as $row) {
+            foreach (array_values($row) as $index => $value) {
+                if ($value instanceof DateTimeInterface) {
+                    $value = $value->format('d/m/Y H:i:s');
+                }
+
+                $length = function_exists('mb_strwidth')
+                    ? mb_strwidth((string) $value, 'UTF-8')
+                    : strlen((string) $value);
+
+                $widths[$index] = max($widths[$index] ?? 10, min($length + 4, 60));
+            }
+        }
+
+        return $widths;
+    }
+
+    private function worksheetColumnsXml(array $columnWidths): string
+    {
+        if ($columnWidths === []) {
+            return '';
+        }
+
+        $columns = [];
+
+        foreach ($columnWidths as $index => $width) {
+            $position = $index + 1;
+            $columns[] = '<col min="'.$position.'" max="'.$position.'" width="'.$width.'" customWidth="1"/>';
+        }
+
+        return '<cols>'.implode('', $columns).'</cols>';
     }
 
     private function columnName(int $index): string

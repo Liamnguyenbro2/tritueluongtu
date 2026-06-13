@@ -291,11 +291,11 @@ class LedgerEntry extends Model
 
 class WithdrawalRequest extends Model
 {
-    protected $fillable = ['user_id', 'bank_account_id', 'amount_vnd', 'status', 'admin_note', 'decided_at'];
+    protected $fillable = ['withdrawal_number', 'user_id', 'bank_account_id', 'amount_vnd', 'status', 'admin_note', 'decided_at'];
 
     protected function casts(): array
     {
-        return ['decided_at' => 'datetime'];
+        return ['withdrawal_number' => 'integer', 'decided_at' => 'datetime'];
     }
 
     public function user()

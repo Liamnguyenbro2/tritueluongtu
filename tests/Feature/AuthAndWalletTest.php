@@ -290,6 +290,7 @@ class AuthAndWalletTest extends TestCase
 
         $this->assertDatabaseHas('withdrawal_requests', [
             'user_id' => $user->id,
+            'withdrawal_number' => 1,
             'amount_vnd' => 150000,
             'status' => 'pending',
         ]);
