@@ -68,7 +68,7 @@
 
     <section
         class="glass rounded-[32px] p-6"
-        x-data="{ confirmBank: false, bankName: @js(old('bank_name', $bankAccount?->bank_name)), accountNumber: @js(old('account_number', $bankAccount?->account_number)), accountHolder: @js(old('account_holder', $bankAccount?->account_holder)) }"
+        x-data="{ confirmBank: false, bankName: @js($selectedBankName), accountNumber: @js(old('account_number', $bankAccount?->account_number)), accountHolder: @js(old('account_holder', $bankAccount?->account_holder)) }"
     >
         <div class="mb-5 flex items-center justify-between gap-4">
             <div>
@@ -88,7 +88,12 @@
             @method('put')
             <label class="grid gap-2">
                 <span class="text-sm text-slate-400">Tên ngân hàng</span>
-                <input class="premium-input" name="bank_name" x-model="bankName" value="{{ old('bank_name', $bankAccount?->bank_name) }}" required @disabled($bankAccount && ! $bankAccount->can_edit)>
+                <select class="premium-input appearance-none" name="bank_name" x-model="bankName" required @disabled($bankAccount && ! $bankAccount->can_edit)>
+                    <option value="">{!! html_entity_decode('-- Ch&#7885;n ng&#226;n h&#224;ng --') !!}</option>
+                    @foreach($bankOptions as $bankOption)
+                        <option value="{{ $bankOption }}">{{ $bankOption }}</option>
+                    @endforeach
+                </select>
             </label>
             <label class="grid gap-2">
                 <span class="text-sm text-slate-400">Số tài khoản</span>

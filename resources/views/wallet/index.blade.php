@@ -15,7 +15,7 @@
 
         <div
             class="glass rounded-[32px] p-6"
-            x-data="{ confirmBank: false, bankName: @js(old('bank_name', $bankAccount?->bank_name)), accountNumber: @js(old('account_number', $bankAccount?->account_number)), accountHolder: @js(old('account_holder', $bankAccount?->account_holder)) }"
+            x-data="{ confirmBank: false, bankName: @js($selectedBankName), accountNumber: @js(old('account_number', $bankAccount?->account_number)), accountHolder: @js(old('account_holder', $bankAccount?->account_holder)) }"
         >
             <div class="flex items-start justify-between gap-4">
                 <div>
@@ -31,7 +31,12 @@
 
             <form x-ref="bankForm" method="post" action="{{ route('wallet.bank-account') }}" class="mt-5 grid gap-4 sm:grid-cols-3" @submit.prevent="confirmBank = true">
                 @csrf
-                <input class="premium-input" name="bank_name" placeholder="Tên ngân hàng" x-model="bankName" value="{{ old('bank_name', $bankAccount?->bank_name) }}" required @disabled($bankAccount && ! $bankAccount->can_edit)>
+                <select class="premium-input appearance-none" name="bank_name" x-model="bankName" required @disabled($bankAccount && ! $bankAccount->can_edit)>
+                    <option value="">{!! html_entity_decode('-- Ch&#7885;n ng&#226;n h&#224;ng --') !!}</option>
+                    @foreach($bankOptions as $bankOption)
+                        <option value="{{ $bankOption }}">{{ $bankOption }}</option>
+                    @endforeach
+                </select>
                 <input class="premium-input" name="account_number" placeholder="Số tài khoản" x-model="accountNumber" value="{{ old('account_number', $bankAccount?->account_number) }}" required @disabled($bankAccount && ! $bankAccount->can_edit)>
                 <input class="premium-input" name="account_holder" placeholder="Chủ tài khoản" x-model="accountHolder" value="{{ old('account_holder', $bankAccount?->account_holder) }}" required @disabled($bankAccount && ! $bankAccount->can_edit)>
                 <div class="sm:col-span-3">

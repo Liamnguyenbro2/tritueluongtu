@@ -8,6 +8,7 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletLedgerService;
+use App\Support\SupportedBanks;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -332,7 +333,7 @@ class AdminWalletTransferTest extends TestCase
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
         $bankAccount = BankAccount::query()->create([
             'user_id' => $user->id,
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
             'can_edit' => false,
@@ -385,7 +386,7 @@ class AdminWalletTransferTest extends TestCase
         app(WalletLedgerService::class)->credit($wallet, 200000, 'test_topup');
         $bankAccount = BankAccount::query()->create([
             'user_id' => $user->id,
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
             'can_edit' => false,
@@ -435,7 +436,7 @@ class AdminWalletTransferTest extends TestCase
         app(WalletLedgerService::class)->credit($wallet, 200000, 'test_topup');
         $bankAccount = BankAccount::query()->create([
             'user_id' => $user->id,
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
             'can_edit' => false,

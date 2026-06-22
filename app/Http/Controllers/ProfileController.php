@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BankAccount;
+use App\Support\SupportedBanks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,6 +17,8 @@ class ProfileController extends Controller
         return view('profile.edit', [
             'user' => $request->user(),
             'bankAccount' => $request->user()->bankAccount,
+            'bankOptions' => SupportedBanks::options(),
+            'selectedBankName' => old('bank_name', SupportedBanks::normalize($request->user()->bankAccount?->bank_name) ?? $request->user()->bankAccount?->bank_name),
         ]);
     }
 
@@ -55,10 +58,15 @@ class ProfileController extends Controller
         $existing = BankAccount::query()->where('user_id', $user->id)->first();
 
         $data = $request->validate([
-            'bank_name' => ['required', 'string', 'max:100'],
+            'bank_name' => SupportedBanks::validationRules(),
             'account_number' => ['required', 'string', 'max:50'],
             'account_holder' => ['required', 'string', 'max:100'],
+        ], [
+            'bank_name.required' => 'Vui lòng chọn ngân hàng.',
+            'bank_name.in' => 'Tên ngân hàng không hợp lệ.',
         ]);
+
+        $data['bank_name'] = SupportedBanks::normalize($data['bank_name']) ?? $data['bank_name'];
 
         if ($existing && ! $existing->can_edit) {
             abort(403, 'Thông tin ngân hàng chỉ được chỉnh sửa khi admin mở khóa.');

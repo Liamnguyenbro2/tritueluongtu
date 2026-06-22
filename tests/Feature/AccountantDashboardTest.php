@@ -7,6 +7,7 @@ use App\Models\TransactionLog;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletLedgerService;
+use App\Support\SupportedBanks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -94,7 +95,7 @@ class AccountantDashboardTest extends TestCase
         $wallet->update(['is_locked' => true]);
 
         $this->actingAs($user)->post('/wallet/bank-account', [
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
         ])->assertRedirect();
@@ -275,7 +276,7 @@ class AccountantDashboardTest extends TestCase
         $this->assertStringContainsString('Nguyen Van A', $sheetXml);
         $this->assertStringContainsString('123 Duong ABC', $sheetXml);
         $this->assertStringContainsString('49.000', $sheetXml);
-        $this->assertStringContainsString('MB Bank', $sheetXml);
+        $this->assertStringContainsString('Ví số dư / MB Bank', $sheetXml);
         $this->assertStringNotContainsString('DEP-EXPORT-002', $sheetXml);
         $this->assertStringContainsString('fontId="1"', $stylesXml);
 
@@ -326,7 +327,7 @@ class AccountantDashboardTest extends TestCase
         $bankAccount = DB::table('bank_accounts')->where('user_id', $user->id)->first();
         if (! $bankAccount) {
             $this->actingAs($user)->post('/wallet/bank-account', [
-                'bank_name' => 'MB Bank',
+                'bank_name' => SupportedBanks::byCode('MB BANK'),
                 'account_number' => '123456789',
                 'account_holder' => 'NGUYEN VAN A',
             ]);
@@ -361,7 +362,7 @@ class AccountantDashboardTest extends TestCase
         $this->assertNotFalse($stylesXml);
         $this->assertStringContainsString('012345678901', $sheetXml);
         $this->assertStringContainsString('Nguyen Van A', $sheetXml);
-        $this->assertStringContainsString('MB Bank', $sheetXml);
+        $this->assertStringContainsString(SupportedBanks::byCode('MB BANK'), $sheetXml);
         $this->assertStringContainsString('123456789', $sheetXml);
         $this->assertStringContainsString('<cols>', $sheetXml);
         $this->assertStringContainsString('fontId="1"', $stylesXml);

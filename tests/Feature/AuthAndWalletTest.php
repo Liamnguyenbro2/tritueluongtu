@@ -7,6 +7,7 @@ use App\Models\Referral;
 use App\Models\ReferralLink;
 use App\Models\User;
 use App\Services\WalletLedgerService;
+use App\Support\SupportedBanks;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -219,7 +220,7 @@ class AuthAndWalletTest extends TestCase
         app(WalletLedgerService::class)->credit($wallet, 200000, 'test_topup');
 
         $this->actingAs($user)->post('/wallet/bank-account', [
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456',
             'account_holder' => 'NGUYEN VAN A',
         ]);
@@ -242,7 +243,7 @@ class AuthAndWalletTest extends TestCase
         app(WalletLedgerService::class)->credit($wallet, 51000, 'test_topup');
 
         $this->actingAs($user)->post('/wallet/bank-account', [
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456',
             'account_holder' => 'NGUYEN VAN A',
         ]);
@@ -278,7 +279,7 @@ class AuthAndWalletTest extends TestCase
         app(WalletLedgerService::class)->credit($wallet, 200000, 'test_topup');
 
         $this->actingAs($user)->post('/wallet/bank-account', [
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456',
             'account_holder' => 'NGUYEN VAN A',
         ]);
@@ -332,24 +333,46 @@ class AuthAndWalletTest extends TestCase
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
 
         $this->actingAs($user)->put('/profile/bank-account', [
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('bank_accounts', [
             'user_id' => $user->id,
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
             'can_edit' => false,
         ]);
 
         $this->actingAs($user)->put('/profile/bank-account', [
-            'bank_name' => 'VCB',
+            'bank_name' => SupportedBanks::byCode('VIETCOMBANK'),
             'account_number' => '999999',
             'account_holder' => 'NGUYEN VAN A',
         ])->assertForbidden();
+    }
+
+    public function test_bank_account_requires_supported_bank_name(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+
+        $this->actingAs($user)
+            ->from('/wallet')
+            ->post('/wallet/bank-account', [
+                'bank_name' => 'FAKE BANK',
+                'account_number' => '123456789',
+                'account_holder' => 'NGUYEN VAN A',
+            ])
+            ->assertRedirect('/wallet')
+            ->assertSessionHasErrors('bank_name');
+
+        $this->assertDatabaseMissing('bank_accounts', [
+            'user_id' => $user->id,
+            'account_number' => '123456789',
+        ]);
     }
 
     public function test_wallet_bank_information_is_locked_after_first_save(): void
@@ -359,7 +382,7 @@ class AuthAndWalletTest extends TestCase
         $user = User::query()->where('email', 'user@example.com')->firstOrFail();
 
         $this->actingAs($user)->post('/wallet/bank-account', [
-            'bank_name' => 'MB Bank',
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
             'account_number' => '123456789',
             'account_holder' => 'NGUYEN VAN A',
         ])->assertRedirect();
@@ -372,7 +395,7 @@ class AuthAndWalletTest extends TestCase
             ->assertSee('Thông tin này chỉ được nhập một lần duy nhất và không được phép thay đổi sau khi xác nhận.');
 
         $this->actingAs($user)->post('/wallet/bank-account', [
-            'bank_name' => 'VCB',
+            'bank_name' => SupportedBanks::byCode('VIETCOMBANK'),
             'account_number' => '999999',
             'account_holder' => 'NGUYEN VAN A',
         ])->assertForbidden();
