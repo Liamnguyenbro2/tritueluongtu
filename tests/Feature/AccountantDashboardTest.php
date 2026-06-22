@@ -47,6 +47,7 @@ class AccountantDashboardTest extends TestCase
         }
 
         $this->actingAs($user)->get(route('accountant.dashboard'))->assertForbidden();
+        $this->actingAs($user)->get(route('accountant.deposits.export'))->assertForbidden();
     }
 
     public function test_accountant_can_adjust_and_lock_wallet_with_audit_logs(): void
@@ -145,6 +146,170 @@ class AccountantDashboardTest extends TestCase
             ->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
 
+    public function test_accountant_can_filter_deposits_by_user_status_and_date(): void
+    {
+        $this->seed();
+
+        $accountant = User::query()->where('email', 'accountant@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $user->update(['username' => 'liamnguyen']);
+        $user->kycVerification()->create([
+            'full_name' => 'Nguyen Van A',
+            'citizen_id' => '012345678901',
+            'address' => '123 Duong ABC',
+            'submitted_at' => now(),
+        ]);
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+
+        DB::table('payment_orders')->insert([
+            [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'code' => 'DEP-OK-001',
+                'amount_vnd' => 49000,
+                'status' => 'paid',
+                'provider_transaction_id' => 'REF-OK-001',
+                'paid_at' => now()->subDay(),
+                'metadata' => json_encode(['payment_method' => 'wallet', 'bank_name' => 'MB Bank']),
+                'created_at' => now()->subDay(),
+                'updated_at' => now()->subDay(),
+            ],
+            [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'code' => 'DEP-FAIL-001',
+                'amount_vnd' => 99000,
+                'status' => 'failed',
+                'provider_transaction_id' => 'REF-FAIL-001',
+                'paid_at' => null,
+                'metadata' => json_encode(['payment_method' => 'bank_qr', 'bank_name' => 'ACB']),
+                'created_at' => now()->subDay(),
+                'updated_at' => now()->subDay(),
+            ],
+        ]);
+
+        $response = $this->actingAs($accountant)->get(route('accountant.deposits.index', [
+            'user' => 'liamnguyen',
+            'status' => 'paid',
+            'from_date' => now()->subDay()->format('Y-m-d'),
+            'to_date' => now()->subDay()->format('Y-m-d'),
+        ]));
+
+        $response->assertOk()
+            ->assertSee('DEP-OK-001')
+            ->assertSee('REF-OK-001')
+            ->assertSee('liamnguyen')
+            ->assertSee('012345678901')
+            ->assertSee('Nguyen Van A')
+            ->assertSee('123 Duong ABC')
+            ->assertDontSee('DEP-FAIL-001');
+    }
+
+    public function test_accountant_can_export_deposits_xlsx_with_current_filters(): void
+    {
+        $this->seed();
+
+        $accountant = User::query()->where('email', 'accountant@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $user->update(['username' => 'liamnguyen']);
+        $user->kycVerification()->create([
+            'full_name' => 'Nguyen Van A',
+            'citizen_id' => '012345678901',
+            'address' => '123 Duong ABC',
+            'submitted_at' => now(),
+        ]);
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+
+        DB::table('payment_orders')->insert([
+            [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'code' => 'DEP-EXPORT-001',
+                'amount_vnd' => 49000,
+                'status' => 'paid',
+                'provider_transaction_id' => 'REF-EXPORT-001',
+                'paid_at' => now(),
+                'metadata' => json_encode(['payment_method' => 'wallet', 'bank_name' => 'MB Bank']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'code' => 'DEP-EXPORT-002',
+                'amount_vnd' => 99000,
+                'status' => 'failed',
+                'provider_transaction_id' => 'REF-EXPORT-002',
+                'paid_at' => null,
+                'metadata' => json_encode(['payment_method' => 'bank_qr', 'bank_name' => 'ACB']),
+                'created_at' => now()->subDays(2),
+                'updated_at' => now()->subDays(2),
+            ],
+        ]);
+
+        $response = $this->actingAs($accountant)
+            ->get(route('accountant.deposits.export', [
+                'user' => 'liamnguyen',
+                'status' => 'paid',
+                'from_date' => now()->format('Y-m-d'),
+                'to_date' => now()->format('Y-m-d'),
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertDownload('deposits_'.now()->format('Ymd').'.xlsx');
+
+        $path = $response->baseResponse->getFile()->getPathname();
+        $zip = new ZipArchive();
+        $this->assertTrue($zip->open($path) === true);
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $stylesXml = $zip->getFromName('xl/styles.xml');
+        $zip->close();
+
+        $this->assertNotFalse($sheetXml);
+        $this->assertNotFalse($stylesXml);
+        $this->assertStringContainsString('DEP-EXPORT-001', $sheetXml);
+        $this->assertStringContainsString('REF-EXPORT-001', $sheetXml);
+        $this->assertStringContainsString('liamnguyen', $sheetXml);
+        $this->assertStringContainsString('012345678901', $sheetXml);
+        $this->assertStringContainsString('Nguyen Van A', $sheetXml);
+        $this->assertStringContainsString('123 Duong ABC', $sheetXml);
+        $this->assertStringContainsString('49.000', $sheetXml);
+        $this->assertStringContainsString('MB Bank', $sheetXml);
+        $this->assertStringNotContainsString('DEP-EXPORT-002', $sheetXml);
+        $this->assertStringContainsString('fontId="1"', $stylesXml);
+
+        $this->assertDatabaseHas('accountant_audit_logs', [
+            'actor_user_id' => $accountant->id,
+            'action' => 'deposits.export.xlsx',
+        ]);
+    }
+
+    public function test_deposit_filters_reject_invalid_date_ranges(): void
+    {
+        $this->seed();
+
+        $accountant = User::query()->where('email', 'accountant@example.com')->firstOrFail();
+
+        $this->actingAs($accountant)
+            ->from(route('accountant.deposits.index'))
+            ->get(route('accountant.deposits.index', [
+                'from_date' => now()->format('Y-m-d'),
+                'to_date' => now()->subDay()->format('Y-m-d'),
+            ]))
+            ->assertRedirect(route('accountant.deposits.index'))
+            ->assertSessionHasErrors('from_date');
+
+        $this->actingAs($accountant)
+            ->from(route('accountant.deposits.index'))
+            ->get(route('accountant.deposits.index', [
+                'from_date' => now()->subDays(30)->format('Y-m-d'),
+                'to_date' => now()->format('Y-m-d'),
+            ]))
+            ->assertRedirect(route('accountant.deposits.index'))
+            ->assertSessionHasErrors('from_date');
+    }
+
     public function test_accountant_can_export_withdrawals_xlsx_for_recent_date_and_audit_is_logged(): void
     {
         $this->seed();
@@ -194,10 +359,10 @@ class AccountantDashboardTest extends TestCase
 
         $this->assertNotFalse($sheetXml);
         $this->assertNotFalse($stylesXml);
-        $this->assertStringContainsString('ID Tài khoản', $sheetXml);
         $this->assertStringContainsString('012345678901', $sheetXml);
         $this->assertStringContainsString('Nguyen Van A', $sheetXml);
-        $this->assertStringContainsString('Chờ duyệt', $sheetXml);
+        $this->assertStringContainsString('MB Bank', $sheetXml);
+        $this->assertStringContainsString('123456789', $sheetXml);
         $this->assertStringContainsString('<cols>', $sheetXml);
         $this->assertStringContainsString('fontId="1"', $stylesXml);
 

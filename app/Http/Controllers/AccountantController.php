@@ -207,18 +207,6 @@ class AccountantController extends Controller
             ->orderBy('withdrawal_number')
             ->orderBy('id')
             ->get();
-
-        $rows = $withdrawals->map(fn (WithdrawalRequest $withdrawal) => [
-            'STT' => (int) $withdrawal->withdrawal_number,
-            'ID TÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â i khoÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â£n' => $withdrawal->user?->username ?? '-',
-            'SÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
-            'HÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªn CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
-            'NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->bank_name ?? '-',
-            'STK NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->account_number ?? '-',
-            'ThÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Âi gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
-            'TrÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¡ng thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡i' => $this->withdrawalStatusLabel($withdrawal->status),
-        ])->values()->all();
-
         $rows = $withdrawals
             ->map(fn (WithdrawalRequest $withdrawal) => $this->withdrawalExportRowUtf8($withdrawal))
             ->values()
@@ -325,23 +313,59 @@ class AccountantController extends Controller
 
     public function deposits(Request $request): View
     {
-        $orders = PaymentOrder::query()
-            ->with(['user:id,name,email', 'plan:id,name'])
-            ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')))
-            ->when($request->filled('user'), function (Builder $query) use ($request) {
-                $term = trim((string) $request->string('user'));
-                $query->whereHas('user', fn (Builder $userQuery) => $userQuery
-                    ->where('email', 'like', "%{$term}%")
-                    ->orWhere('name', 'like', "%{$term}%"));
-            })
-            ->latest()
+        $filters = $this->validatedDepositFilters($request);
+        $orders = $this->filteredDepositsQuery($filters)
             ->paginate(20)
             ->withQueryString();
 
         return view('accountant.deposits.index', [
             'orders' => $orders,
-            'filters' => $request->only(['status', 'user']),
+            'filters' => [
+                'user' => $filters['user'],
+                'status' => $filters['status'],
+                'from_date' => $filters['from_date'],
+                'to_date' => $filters['to_date'],
+            ],
+            'exportUrl' => route('accountant.deposits.export', array_filter([
+                'user' => $filters['user'],
+                'status' => $filters['status'],
+                'from_date' => $filters['from_date'],
+                'to_date' => $filters['to_date'],
+            ], fn ($value) => $value !== null && $value !== '')),
+            'dateMin' => now()->subDays(29)->format('Y-m-d'),
+            'dateMax' => now()->format('Y-m-d'),
         ]);
+    }
+
+    public function exportDeposits(Request $request, SimpleXlsxExporter $xlsx, AccountantAuditLogService $auditLogs): BinaryFileResponse
+    {
+        $filters = $this->validatedDepositFilters($request);
+        $orders = $this->filteredDepositsQuery($filters)->get();
+        $rows = $orders
+            ->values()
+            ->map(fn (PaymentOrder $order, int $index) => $this->depositExportRowUtf8($order, $index + 1))
+            ->all();
+
+        $auditLogs->record(
+            $request->user(),
+            'deposits.export.xlsx',
+            'Da xuat Excel giao dich nap tien',
+            null,
+            'ID tai khoan: '.($request->user()->username ?? $request->user()->email)
+            .PHP_EOL.'Bo loc user: '.($filters['user'] !== '' ? $filters['user'] : 'Tat ca')
+            .PHP_EOL.'Bo loc trang thai: '.($filters['status'] !== '' ? $filters['status'] : 'Tat ca')
+            .PHP_EOL.'Tu ngay: '.($filters['from_date'] ?? 'Khong chon')
+            .PHP_EOL.'Den ngay: '.($filters['to_date'] ?? 'Khong chon')
+            .PHP_EOL.'So ban ghi: '.$orders->count()
+            .PHP_EOL.'Thoi gian thuc hien: '.now()->format('d/m/Y H:i:s')
+        );
+
+        return response()
+            ->download(
+                $xlsx->build('Deposits', $rows),
+                $this->depositExportFilename($filters['from_date'], $filters['to_date'])
+            )
+            ->deleteFileAfterSend();
     }
 
     public function wallets(Request $request): View
@@ -522,6 +546,150 @@ class AccountantController extends Controller
         return view('accountant.audit-logs', compact('logs'));
     }
 
+    private function validatedDepositFilters(Request $request): array
+    {
+        $data = $request->validate([
+            'user' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'in:pending,paid,failed'],
+            'from_date' => ['nullable', 'date_format:Y-m-d'],
+            'to_date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $fromDate = $data['from_date'] ?? null;
+        $toDate = $data['to_date'] ?? null;
+
+        if ($fromDate !== null && $toDate === null) {
+            $toDate = $fromDate;
+        }
+
+        if ($toDate !== null && $fromDate === null) {
+            $fromDate = $toDate;
+        }
+
+        $from = $fromDate ? Carbon::createFromFormat('Y-m-d', $fromDate)->startOfDay() : null;
+        $to = $toDate ? Carbon::createFromFormat('Y-m-d', $toDate)->endOfDay() : null;
+        $today = now()->endOfDay();
+        $minDate = now()->subDays(29)->startOfDay();
+
+        if ($from !== null && $to !== null && $from->gt($to)) {
+            throw ValidationException::withMessages([
+                'from_date' => html_entity_decode('Ng&#224;y b&#7855;t &#273;&#7847;u kh&#244;ng &#273;&#432;&#7907;c l&#7899;n h&#417;n ng&#224;y k&#7871;t th&#250;c.'),
+            ]);
+        }
+
+        if (
+            ($from !== null && ($from->lt($minDate) || $from->gt($today)))
+            || ($to !== null && ($to->lt($minDate) || $to->gt($today)))
+            || ($from !== null && $to !== null && $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay()) > 29)
+        ) {
+            throw ValidationException::withMessages([
+                'from_date' => html_entity_decode('Ch&#7881; &#273;&#432;&#7907;c l&#7885;c d&#7919; li&#7879;u t&#7889;i &#273;a 30 ng&#224;y g&#7847;n nh&#7845;t.'),
+            ]);
+        }
+
+        return [
+            'user' => trim((string) ($data['user'] ?? '')),
+            'status' => (string) ($data['status'] ?? ''),
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'from' => $from,
+            'to' => $to,
+        ];
+    }
+
+    private function filteredDepositsQuery(array $filters): Builder
+    {
+        return PaymentOrder::query()
+            ->with([
+                'user:id,username,name,email',
+                'user.kycVerification:user_id,full_name,citizen_id,address',
+                'plan:id,name',
+            ])
+            ->when($filters['status'] !== '', fn (Builder $query) => $query->where('status', $filters['status']))
+            ->when($filters['user'] !== '', function (Builder $query) use ($filters) {
+                $term = $filters['user'];
+                $query->whereHas('user', fn (Builder $userQuery) => $userQuery
+                    ->where('email', 'like', "%{$term}%")
+                    ->orWhere('name', 'like', "%{$term}%")
+                    ->orWhere('username', 'like', "%{$term}%"));
+            })
+            ->when($filters['from'] !== null && $filters['to'] !== null, function (Builder $query) use ($filters) {
+                $from = $filters['from'];
+                $to = $filters['to'];
+
+                $query->where(function (Builder $nested) use ($from, $to) {
+                    $nested->where(function (Builder $dated) use ($from, $to) {
+                        $dated->whereNotNull('paid_at')->whereBetween('paid_at', [$from, $to]);
+                    })->orWhere(function (Builder $fallback) use ($from, $to) {
+                        $fallback->whereNull('paid_at')->whereBetween('created_at', [$from, $to]);
+                    });
+                });
+            })
+            ->latest();
+    }
+
+    private function depositChannelLabel(PaymentOrder $order): string
+    {
+        return match ($order->metadata['payment_method'] ?? 'bank_qr') {
+            'wallet' => html_entity_decode('V&#237; s&#7889; d&#432;'),
+            '9pay' => '9Pay',
+            'vnpay' => 'VNPay',
+            default => 'QR Banking',
+        };
+    }
+
+    private function depositBankLabel(PaymentOrder $order): string
+    {
+        return $order->metadata['bank_code']
+            ?? $order->metadata['bank_name']
+            ?? html_entity_decode('Ch&#432;a c&#7853;p nh&#7853;t');
+    }
+
+    private function depositStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'pending' => html_entity_decode('&#272;ang x&#7917; l&#253;'),
+            'paid' => html_entity_decode('Th&#224;nh c&#244;ng'),
+            'failed' => html_entity_decode('Th&#7845;t b&#7841;i'),
+            default => html_entity_decode('Kh&#225;c'),
+        };
+    }
+
+    private function depositExportFilename(?string $fromDate, ?string $toDate): string
+    {
+        if ($fromDate !== null && $toDate !== null) {
+            $from = Carbon::createFromFormat('Y-m-d', $fromDate)->format('Ymd');
+            $to = Carbon::createFromFormat('Y-m-d', $toDate)->format('Ymd');
+
+            return $from === $to
+                ? "deposits_{$from}.xlsx"
+                : "deposits_{$from}_{$to}.xlsx";
+        }
+
+        return 'deposits_'.now()->format('Ymd').'.xlsx';
+    }
+
+    private function depositExportRowUtf8(PaymentOrder $order, int $index): array
+    {
+        $kyc = $order->user?->kycVerification;
+        $missing = html_entity_decode('Ch&#432;a c&#7853;p nh&#7853;t');
+
+        return [
+            'STT' => $index,
+            html_entity_decode('M&#227; giao d&#7883;ch') => $order->code,
+            html_entity_decode('M&#227; &#273;&#7889;i so&#225;t') => $order->provider_transaction_id ?: '-',
+            html_entity_decode('ID T&#224;i kho&#7843;n') => $order->user?->username ?? $missing,
+            html_entity_decode('S&#7889; CCCD') => $kyc?->citizen_id ?? $missing,
+            html_entity_decode('H&#7885; t&#234;n CCCD') => $kyc?->full_name ?? $missing,
+            html_entity_decode('&#272;&#7883;a ch&#7881; CCCD') => $kyc?->address ?? $missing,
+            html_entity_decode('G&#243;i mua') => $order->plan?->name ?? $missing,
+            html_entity_decode('S&#7889; ti&#7873;n') => number_format((int) $order->amount_vnd, 0, ',', '.').html_entity_decode('&#273;'),
+            html_entity_decode('Ng&#226;n h&#224;ng / k&#234;nh') => $this->depositChannelLabel($order).' / '.$this->depositBankLabel($order),
+            html_entity_decode('Th&#7901;i gian') => optional($order->paid_at ?? $order->created_at)?->format('d/m/Y H:i:s') ?? '-',
+            html_entity_decode('Tr&#7841;ng th&#225;i') => $this->depositStatusLabel($order->status),
+        ];
+    }
+
     private function filteredTransactions(Request $request): Builder
     {
         return TransactionLog::query()
@@ -674,18 +842,18 @@ class AccountantController extends Controller
     {
         return [
             'STT' => (int) $withdrawal->withdrawal_number,
-            'ID TÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â i khoÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â£n' => $withdrawal->user?->username ?? '-',
-            'SÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
-            'HÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªn CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
-            'NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->bank_name ?? '-',
-            'STK NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->account_number ?? '-',
-            'ThÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Âi gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
-            'TrÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¡ng thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡i' => match ($withdrawal->status) {
-                'pending' => 'ChÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â duyÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡t',
-                'approved' => 'ÃƒÆ’Ã¢â‚¬Å¾Ãƒâ€šÃ‚Âang xÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â­ lÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â½',
-                'transferred' => 'HoÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â n thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â nh',
-                'rejected' => 'TÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â« chÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“i',
-                default => 'KhÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡c',
+            'ID TÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â i khoÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£n' => $withdrawal->user?->username ?? '-',
+            'SÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œ CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
+            'HÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â tÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªn CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            'NgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->bank_name ?? '-',
+            'STK NgÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->account_number ?? '-',
+            'ThÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âi gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
+            'TrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ng thÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡i' => match ($withdrawal->status) {
+                'pending' => 'ChÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â duyÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¡t',
+                'approved' => 'ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âang xÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ lÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½',
+                'transferred' => 'HoÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â n thÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â nh',
+                'rejected' => 'TÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â« chÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œi',
+                default => 'KhÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡c',
             },
         ];
     }
@@ -699,7 +867,7 @@ class AccountantController extends Controller
             html_entity_decode('H&#7885; t&#234;n CCCD') => $withdrawal->user?->kycVerification?->full_name ?? '-',
             html_entity_decode('Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->bank_name ?? '-',
             html_entity_decode('STK Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->account_number ?? '-',
-            html_entity_decode('S&#7889; ti&#7873;n r&#250;t') => number_format((int) $withdrawal->amount_vnd, 0, ',', '.').'đ',
+            html_entity_decode('S&#7889; ti&#7873;n r&#250;t') => number_format((int) $withdrawal->amount_vnd, 0, ',', '.').'Ä‘',
             html_entity_decode('Th&#7901;i gian') => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
             html_entity_decode('Tr&#7841;ng th&#225;i') => match ($withdrawal->status) {
                 'pending' => html_entity_decode('Ch&#7901; duy&#7879;t'),
@@ -727,7 +895,7 @@ class AccountantController extends Controller
                     $minDate = now()->subDays(6)->startOfDay();
 
                     if ($date->lt($minDate) || $date->gt($today)) {
-                        $fail('ChÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â° ÃƒÆ’Ã¢â‚¬Å¾ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÆ’Ã¢â‚¬Â Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â£c xuÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¥t dÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â¯ liÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡u trong vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â²ng 7 ngÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â y gÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â§n nhÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¥t.');
+                        $fail('ChÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â° ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£c xuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¥t dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ liÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¡u trong vÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â²ng 7 ngÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â y gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§n nhÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¥t.');
                     }
                 },
             ],
@@ -741,12 +909,13 @@ class AccountantController extends Controller
     private function withdrawalStatusLabel(string $status): string
     {
         return match ($status) {
-            'pending' => 'ChÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â duyÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡t',
-            'approved' => 'ÃƒÆ’Ã¢â‚¬Å¾Ãƒâ€šÃ‚Âang xÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â­ lÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â½',
-            'transferred' => 'HoÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â n thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â nh',
-            'rejected' => 'TÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â« chÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“i',
-            default => 'KhÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡c',
+            'pending' => 'ChÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â duyÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¡t',
+            'approved' => 'ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âang xÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ lÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½',
+            'transferred' => 'HoÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â n thÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â nh',
+            'rejected' => 'TÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â« chÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œi',
+            default => 'KhÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡c',
         };
     }
 }
+
 

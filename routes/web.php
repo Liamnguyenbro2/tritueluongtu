@@ -126,6 +126,7 @@ Route::middleware(['auth', 'accountant'])->prefix('accountant')->name('accountan
     Route::post('/withdrawals/{withdrawal}/mark-transferred', [AccountantController::class, 'markTransferred'])->name('withdrawals.mark-transferred');
     Route::post('/withdrawals/{withdrawal}/resend', [AccountantController::class, 'resendTransfer'])->name('withdrawals.resend');
     Route::get('/deposits', [AccountantController::class, 'deposits'])->name('deposits.index');
+    Route::get('/deposits/export/xlsx', [AccountantController::class, 'exportDeposits'])->name('deposits.export');
     Route::get('/wallets', [AccountantController::class, 'wallets'])->name('wallets.index');
     Route::post('/wallets/{user}/adjust', [AccountantController::class, 'adjustWallet'])->name('wallets.adjust');
     Route::post('/wallets/{user}/toggle-lock', [AccountantController::class, 'toggleWalletLock'])->name('wallets.toggle-lock');
