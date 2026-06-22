@@ -210,13 +210,13 @@ class AccountantController extends Controller
 
         $rows = $withdrawals->map(fn (WithdrawalRequest $withdrawal) => [
             'STT' => (int) $withdrawal->withdrawal_number,
-            'ID Tài khoản' => $withdrawal->user?->username ?? '-',
-            'Số CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
-            'Họ tên CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
-            'Ngân hàng' => $withdrawal->bankAccount?->bank_name ?? '-',
-            'STK Ngân hàng' => $withdrawal->bankAccount?->account_number ?? '-',
-            'Thời gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
-            'Trạng thái' => $this->withdrawalStatusLabel($withdrawal->status),
+            'ID TÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â i khoÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â£n' => $withdrawal->user?->username ?? '-',
+            'SÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
+            'HÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªn CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            'NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->bank_name ?? '-',
+            'STK NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->account_number ?? '-',
+            'ThÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Âi gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
+            'TrÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¡ng thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡i' => $this->withdrawalStatusLabel($withdrawal->status),
         ])->values()->all();
 
         $rows = $withdrawals
@@ -674,18 +674,18 @@ class AccountantController extends Controller
     {
         return [
             'STT' => (int) $withdrawal->withdrawal_number,
-            'ID Tài khoản' => $withdrawal->user?->username ?? '-',
-            'Số CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
-            'Họ tên CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
-            'Ngân hàng' => $withdrawal->bankAccount?->bank_name ?? '-',
-            'STK Ngân hàng' => $withdrawal->bankAccount?->account_number ?? '-',
-            'Thời gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
-            'Trạng thái' => match ($withdrawal->status) {
-                'pending' => 'Chờ duyệt',
-                'approved' => 'Đang xử lý',
-                'transferred' => 'Hoàn thành',
-                'rejected' => 'Từ chối',
-                default => 'Khác',
+            'ID TÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â i khoÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â£n' => $withdrawal->user?->username ?? '-',
+            'SÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ CCCD' => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
+            'HÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªn CCCD' => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            'NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->bank_name ?? '-',
+            'STK NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢n hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â ng' => $withdrawal->bankAccount?->account_number ?? '-',
+            'ThÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Âi gian' => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
+            'TrÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¡ng thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡i' => match ($withdrawal->status) {
+                'pending' => 'ChÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â duyÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡t',
+                'approved' => 'ÃƒÆ’Ã¢â‚¬Å¾Ãƒâ€šÃ‚Âang xÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â­ lÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â½',
+                'transferred' => 'HoÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â n thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â nh',
+                'rejected' => 'TÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â« chÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“i',
+                default => 'KhÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡c',
             },
         ];
     }
@@ -699,6 +699,7 @@ class AccountantController extends Controller
             html_entity_decode('H&#7885; t&#234;n CCCD') => $withdrawal->user?->kycVerification?->full_name ?? '-',
             html_entity_decode('Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->bank_name ?? '-',
             html_entity_decode('STK Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->account_number ?? '-',
+            html_entity_decode('S&#7889; ti&#7873;n r&#250;t') => number_format((int) $withdrawal->amount_vnd, 0, ',', '.').'đ',
             html_entity_decode('Th&#7901;i gian') => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
             html_entity_decode('Tr&#7841;ng th&#225;i') => match ($withdrawal->status) {
                 'pending' => html_entity_decode('Ch&#7901; duy&#7879;t'),
@@ -726,7 +727,7 @@ class AccountantController extends Controller
                     $minDate = now()->subDays(6)->startOfDay();
 
                     if ($date->lt($minDate) || $date->gt($today)) {
-                        $fail('Chỉ được xuất dữ liệu trong vòng 7 ngày gần nhất.');
+                        $fail('ChÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â° ÃƒÆ’Ã¢â‚¬Å¾ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÆ’Ã¢â‚¬Â Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â£c xuÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¥t dÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â¯ liÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡u trong vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â²ng 7 ngÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â y gÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â§n nhÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚ÂºÃƒâ€šÃ‚Â¥t.');
                     }
                 },
             ],
@@ -740,11 +741,12 @@ class AccountantController extends Controller
     private function withdrawalStatusLabel(string $status): string
     {
         return match ($status) {
-            'pending' => 'Chờ duyệt',
-            'approved' => 'Đang xử lý',
-            'transferred' => 'Hoàn thành',
-            'rejected' => 'Từ chối',
-            default => 'Khác',
+            'pending' => 'ChÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â duyÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡t',
+            'approved' => 'ÃƒÆ’Ã¢â‚¬Å¾Ãƒâ€šÃ‚Âang xÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â­ lÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â½',
+            'transferred' => 'HoÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â n thÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â nh',
+            'rejected' => 'TÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â« chÃƒÆ’Ã‚Â¡Ãƒâ€šÃ‚Â»ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“i',
+            default => 'KhÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡c',
         };
     }
 }
+
