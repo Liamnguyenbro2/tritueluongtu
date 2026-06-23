@@ -154,7 +154,10 @@ class BillingController extends Controller
 
     public function show(Request $request, PaymentOrder $order): View
     {
-        abort_unless($request->user()->is_admin || $order->user_id === $request->user()->id, 403);
+        abort_unless(
+            $request->user()->isAdmin() || (int) $order->user_id === (int) $request->user()->id,
+            403
+        );
 
         return view('billing.show', [
             'order' => $order->load('plan'),
@@ -164,7 +167,10 @@ class BillingController extends Controller
 
     public function orderStatus(Request $request, PaymentOrder $order): JsonResponse
     {
-        abort_unless($request->user()->is_admin || $order->user_id === $request->user()->id, 403);
+        abort_unless(
+            $request->user()->isAdmin() || (int) $order->user_id === (int) $request->user()->id,
+            403
+        );
 
         return response()->json([
             'status' => $order->status,

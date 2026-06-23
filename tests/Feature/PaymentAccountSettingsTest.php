@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\PaymentOrder;
 use App\Models\Plan;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -62,5 +63,33 @@ class PaymentAccountSettingsTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame('9969279668', SiteSetting::getValue('payment_account_no'));
+    }
+
+    public function test_regular_user_can_create_and_view_own_qr_order(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
+
+        $this->actingAs($user)
+            ->post(route('billing.orders.store'), [
+                'plan_id' => $plan->id,
+                'payment_method' => 'bank_qr',
+            ])
+            ->assertRedirect();
+
+        $order = PaymentOrder::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
+
+        $this->assertIsInt($order->user_id);
+        $this->actingAs($user)
+            ->get(route('billing.orders.show', $order))
+            ->assertOk()
+            ->assertSee($order->code);
+
+        $this->actingAs($user)
+            ->get(route('billing.orders.status', $order))
+            ->assertOk()
+            ->assertJson(['status' => 'pending']);
     }
 }
