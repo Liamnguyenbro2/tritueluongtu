@@ -245,8 +245,9 @@ class PaymentOrder extends Model
 
     public function vietQrImageUrl(): ?string
     {
-        $bankCode = trim((string) config('quantum.bank_qr.bank_code'));
-        $accountNo = preg_replace('/\s+/', '', (string) config('quantum.bank_qr.account_no'));
+        $paymentAccount = SiteSetting::paymentAccount();
+        $bankCode = trim((string) $paymentAccount['bank_code']);
+        $accountNo = preg_replace('/\s+/', '', (string) $paymentAccount['account_no']);
 
         if ($bankCode === '' || $accountNo === '') {
             return null;
@@ -256,7 +257,7 @@ class PaymentOrder extends Model
         $query = http_build_query([
             'amount' => (int) $this->amount_vnd,
             'addInfo' => $this->code,
-            'accountName' => (string) config('quantum.bank_qr.account_name'),
+            'accountName' => (string) $paymentAccount['account_name'],
         ], '', '&', PHP_QUERY_RFC3986);
 
         return sprintf(

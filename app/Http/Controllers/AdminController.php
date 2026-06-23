@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountSuspension;
-use App\Models\LedgerEntry;
 use App\Models\KycVerification;
+use App\Models\LedgerEntry;
 use App\Models\PaymentOrder;
 use App\Models\Referral;
 use App\Models\ReferralLink;
@@ -13,9 +13,10 @@ use App\Models\TransactionLog;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WithdrawalRequest;
-use Carbon\Carbon;
 use App\Services\ReferralCommissionService;
+use App\Services\TransactionLogService;
 use App\Services\WalletLedgerService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -88,13 +89,14 @@ class AdminController extends Controller
             'withdrawals' => WithdrawalRequest::query()->with('user')->latest()->limit(20)->get(),
             'systemWallets' => Wallet::query()->whereNull('owner_type')->whereNull('owner_id')->get(),
             'brandSettings' => SiteSetting::branding(),
+            'paymentSettings' => SiteSetting::paymentAccount(),
             'adminWallet' => app(WalletLedgerService::class)->walletForUser($request->user()),
             'transferLogs' => $request->user()->wallet?->ledgerEntries()
                 ->where('type', 'admin_transfer_out')
                 ->latest()
                 ->limit(10)
                 ->get() ?? collect(),
-        ]); 
+        ]);
     }
 
     public function users(Request $request): View
@@ -424,6 +426,26 @@ class AdminController extends Controller
         return back()->with('status', 'Đã cập nhật logo và text thương hiệu.');
     }
 
+    public function updatePaymentSettings(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'payment_bank_name' => ['required', 'string', 'max:120'],
+            'payment_bank_code' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9_-]+$/'],
+            'payment_account_no' => ['required', 'string', 'regex:/^[0-9]{6,30}$/'],
+            'payment_account_name' => ['required', 'string', 'max:160'],
+        ], [
+            'payment_bank_code.regex' => 'Mã ngân hàng chỉ được dùng chữ, số, dấu gạch ngang hoặc gạch dưới.',
+            'payment_account_no.regex' => 'Số tài khoản phải gồm từ 6 đến 30 chữ số.',
+        ]);
+
+        SiteSetting::setValue('payment_bank_name', trim($data['payment_bank_name']));
+        SiteSetting::setValue('payment_bank_code', strtoupper(trim($data['payment_bank_code'])));
+        SiteSetting::setValue('payment_account_no', trim($data['payment_account_no']));
+        SiteSetting::setValue('payment_account_name', trim($data['payment_account_name']));
+
+        return back()->with('status', 'Đã cập nhật tài khoản nhận thanh toán. QR mới sẽ sử dụng cấu hình này.');
+    }
+
     public function passwords(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
@@ -533,20 +555,20 @@ class AdminController extends Controller
             ->paginate(15, ['*'], 'report_members_page')
             ->withQueryString();
         $referralRows->getCollection()->transform(function (Referral $referral) {
-                $referred = $referral->referred;
-                $activeSubscription = $referred?->subscriptions
-                    ->where('status', 'active')
-                    ->where('ends_at', '>', now())
-                    ->sortByDesc('ends_at')
-                    ->first();
+            $referred = $referral->referred;
+            $activeSubscription = $referred?->subscriptions
+                ->where('status', 'active')
+                ->where('ends_at', '>', now())
+                ->sortByDesc('ends_at')
+                ->first();
 
-                return [
-                    'referral' => $referral,
-                    'user' => $referred,
-                    'is_active' => $referral->activated_at !== null,
-                    'subscription_ends_at' => $activeSubscription?->ends_at,
-                ];
-            });
+            return [
+                'referral' => $referral,
+                'user' => $referred,
+                'is_active' => $referral->activated_at !== null,
+                'subscription_ends_at' => $activeSubscription?->ends_at,
+            ];
+        });
 
         $allReferrals = $referralQuery->get();
         $affiliateIncomeVnd = (int) $wallet->ledgerEntries()
@@ -750,7 +772,7 @@ class AdminController extends Controller
         return back()->with('status', 'Đã mở quyền sửa tài khoản ngân hàng.');
     }
 
-    public function approveWithdrawal(WithdrawalRequest $withdrawal, WalletLedgerService $wallets, \App\Services\TransactionLogService $transactionLogs): RedirectResponse
+    public function approveWithdrawal(WithdrawalRequest $withdrawal, WalletLedgerService $wallets, TransactionLogService $transactionLogs): RedirectResponse
     {
         DB::transaction(function () use ($withdrawal, $wallets, $transactionLogs) {
             if ($withdrawal->status !== 'pending') {
@@ -774,7 +796,7 @@ class AdminController extends Controller
         return back()->with('status', 'Đã duyệt yêu cầu rút tiền.');
     }
 
-    public function rejectWithdrawal(Request $request, WithdrawalRequest $withdrawal, WalletLedgerService $wallets, \App\Services\TransactionLogService $transactionLogs): RedirectResponse
+    public function rejectWithdrawal(Request $request, WithdrawalRequest $withdrawal, WalletLedgerService $wallets, TransactionLogService $transactionLogs): RedirectResponse
     {
         $data = $request->validate([
             'admin_note' => ['required', 'string', 'max:500'],

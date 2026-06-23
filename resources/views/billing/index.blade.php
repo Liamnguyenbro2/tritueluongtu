@@ -26,8 +26,6 @@
                 $hasBankQr = $plan->bank_qr_enabled;
                 $hasWallet = $plan->wallet_enabled;
                 $canPayWithWallet = $hasWallet && $wallet->balance_vnd >= $plan->price_vnd;
-                $qrImageUrl = $plan->bankQrImageUrl();
-                $qrFileName = $plan->bankQrImageFileName();
                 $isMonthly = $plan->code === config('quantum.plans.monthly_code');
                 $monthlyLessonOptions = $isMonthly
                     ? collect($lessons)
@@ -197,32 +195,10 @@
                         </div>
                     @endif
 
-                    @if($hasBankQr && $qrImageUrl)
-                        <div class="mt-6 rounded-[28px] border border-violet-300/15 bg-black/20 p-4">
-                            <div class="mb-3 flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-sm font-semibold text-white">M&#227; QR thanh to&#225;n</p>
-                                    <p class="mt-1 text-xs text-slate-400">&#7842;nh QR n&#224;y do admin c&#7845;u h&#236;nh ri&#234;ng cho g&#243;i {{ $plan->name }}.</p>
-                                </div>
-                                <i data-lucide="scan-line" class="h-5 w-5 text-violet-200"></i>
-                            </div>
-                            <a href="{{ $qrImageUrl }}" target="_blank" rel="noopener noreferrer" class="mx-auto block w-full max-w-[260px]">
-                                <img src="{{ $qrImageUrl }}" alt="QR thanh to&#225;n {{ $plan->name }}" class="mx-auto aspect-square w-full rounded-[24px] border border-white/10 bg-white object-cover p-2 shadow-glow">
-                            </a>
-                            <p class="mt-3 text-center text-xs leading-5 text-slate-400">
-                                iPhone/iPad: gi&#7919; ch&#7841;m v&#224;o &#7843;nh QR &#273;&#7875; ch&#7885;n l&#432;u &#7843;nh.
-                            </p>
-                            @if($qrImageUrl && $qrFileName)
-                                <button
-                                    type="button"
-                                    data-save-image-url="{{ $qrImageUrl }}"
-                                    data-save-image-name="{{ $qrFileName }}"
-                                    class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:-translate-y-0.5 hover:bg-violet-400/15 hover:shadow-glow"
-                                >
-                                    <i data-lucide="download" class="h-4 w-4"></i>
-                                    T&#7843;i m&#227; QR v&#7873; m&#225;y
-                                </button>
-                            @endif
+                    @if($hasBankQr)
+                        <div class="mt-6 flex items-start gap-3 rounded-[24px] border border-violet-300/15 bg-violet-400/[.06] p-4 text-sm text-slate-300">
+                            <i data-lucide="scan-line" class="mt-0.5 h-5 w-5 shrink-0 text-violet-200"></i>
+                            <p>Mã VietQR riêng sẽ được tạo sau khi bạn chọn bài học hoặc gói và bấm <strong class="text-white">Tạo QR</strong>. QR tự động chứa đúng tài khoản nhận, số tiền và mã đơn hàng.</p>
                         </div>
                     @endif
 

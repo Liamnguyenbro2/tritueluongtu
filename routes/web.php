@@ -83,6 +83,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/kyc/export', [AdminController::class, 'kycExport'])->name('kyc.export');
     Route::get('/shared-pool', [AdminController::class, 'sharedPoolHistory'])->name('shared-pool.history');
     Route::put('/branding', [AdminController::class, 'updateBranding'])->name('branding.update');
+    Route::put('/payment-settings', [AdminController::class, 'updatePaymentSettings'])->name('payment-settings.update');
     Route::post('/wallet-transfer', [AdminController::class, 'transferToUser'])->name('wallet-transfer');
     Route::get('/passwords', [AdminController::class, 'passwords'])->name('passwords');
     Route::post('/passwords', [AdminController::class, 'updateUserPassword'])->name('passwords.update');

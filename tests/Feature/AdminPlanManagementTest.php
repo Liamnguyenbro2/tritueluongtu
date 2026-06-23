@@ -102,10 +102,8 @@ class AdminPlanManagementTest extends TestCase
             ->assertSee('Tinh nang B')
             ->assertSee('Ch&#7885;n b&#224;i h&#7885;c m&#7903; tr&#7921;c ti&#7871;p', false)
             ->assertSee($lesson->title)
-            ->assertSee($plan->bankQrImageUrl(), false)
-            ->assertSee('data-save-image-url="'.$plan->bankQrImageUrl().'"', false)
-            ->assertSee('data-save-image-name="'.$plan->bankQrImageFileName().'"', false)
-            ->assertSee('T&#7843;i m&#227; QR v&#7873; m&#225;y', false)
+            ->assertSeeText('Mã VietQR riêng sẽ được tạo')
+            ->assertDontSee($plan->bankQrImageUrl(), false)
             ->assertSee('value="bank_qr"', false);
     }
 

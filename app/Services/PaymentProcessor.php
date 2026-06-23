@@ -7,6 +7,7 @@ use App\Models\LessonUnlock;
 use App\Models\PaymentOrder;
 use App\Models\Plan;
 use App\Models\Referral;
+use App\Models\SiteSetting;
 use App\Models\Subscription;
 use App\Models\TransactionLog;
 use App\Models\User;
@@ -26,6 +27,7 @@ class PaymentProcessor
     {
         $user = User::query()->findOrFail($userId);
         $plan = Plan::query()->findOrFail($planId);
+        $paymentAccount = SiteSetting::paymentAccount();
         $transactionType = $this->transactionLogs->determinePlanTransactionType($user);
         $orderType = isset($metadata['selected_lesson_id'])
             ? PaymentOrder::TYPE_COURSE
@@ -45,15 +47,15 @@ class PaymentProcessor
             'metadata' => array_merge([
                 'payment_method' => $paymentMethod,
                 'transaction_type' => $transactionType,
-                'bank_code' => config('quantum.bank_qr.bank_code'),
-                'bank_name' => config('quantum.bank_qr.bank_code'),
+                'bank_code' => $paymentAccount['bank_code'],
+                'bank_name' => $paymentAccount['bank_name'],
             ], $metadata),
         ]);
 
         $order->update([
             'code' => $this->orderCode($order),
             'metadata' => array_merge($order->metadata ?? [], [
-                'qr' => $paymentMethod === 'bank_qr' ? config('quantum.bank_qr') : null,
+                'qr' => $paymentMethod === 'bank_qr' ? $paymentAccount : null,
             ]),
         ]);
 
@@ -70,6 +72,7 @@ class PaymentProcessor
 
     public function createWalletTopupOrder(User $user, int $amountVnd): PaymentOrder
     {
+        $paymentAccount = SiteSetting::paymentAccount();
         $order = PaymentOrder::query()->create([
             'user_id' => $user->id,
             'plan_id' => null,
@@ -82,9 +85,9 @@ class PaymentProcessor
             'metadata' => [
                 'payment_method' => 'bank_qr',
                 'transaction_type' => TransactionLog::TYPE_MONEY_IN,
-                'qr' => config('quantum.bank_qr'),
-                'bank_code' => config('quantum.bank_qr.bank_code'),
-                'bank_name' => config('quantum.bank_qr.bank_code'),
+                'qr' => $paymentAccount,
+                'bank_code' => $paymentAccount['bank_code'],
+                'bank_name' => $paymentAccount['bank_name'],
             ],
         ]);
 

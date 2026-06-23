@@ -6,7 +6,7 @@
     $selectedLesson = data_get($order->metadata, 'selected_lesson_title');
     $isWalletTopup = $order->order_type === \App\Models\PaymentOrder::TYPE_WALLET_TOPUP;
     $qrImageUrl = $method === 'bank_qr' ? $order->vietQrImageUrl() : null;
-    $bank = config('quantum.bank_qr');
+    $bank = $paymentSettings;
     $statusLabel = match ($order->status) {
         'paid' => 'Đã thanh toán',
         'expired' => 'Đã hết hạn',
@@ -65,7 +65,7 @@
                         <img src="{{ $qrImageUrl }}" alt="VietQR {{ $order->code }}" class="mx-auto mt-5 aspect-square w-full max-w-[340px] rounded-[28px] bg-white object-contain p-3 shadow-glow">
                     @else
                         <div class="mx-auto mt-5 grid aspect-square w-full max-w-[340px] place-items-center rounded-[28px] border border-dashed border-rose-300/30 bg-black/20 p-6 text-sm text-rose-100">
-                            Chưa cấu hình BANK_QR_BANK_CODE hoặc BANK_QR_ACCOUNT_NO trên hosting.
+                            Admin chưa cấu hình đầy đủ tài khoản nhận thanh toán.
                         </div>
                     @endif
                     <p class="mt-4 font-mono text-lg font-black text-violet-100">{{ $order->code }}</p>

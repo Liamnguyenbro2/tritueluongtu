@@ -11,11 +11,6 @@ return [
         'yearly_code' => 'yearly',
     ],
     'bank_webhook_secret' => env('BANK_WEBHOOK_SECRET'),
-    'bank_qr' => [
-        'bank_code' => env('BANK_QR_BANK_CODE'),
-        'account_no' => env('BANK_QR_ACCOUNT_NO'),
-        'account_name' => env('BANK_QR_ACCOUNT_NAME'),
-    ],
     'media_embed' => [
         'allowed_hosts' => [
             'media.tritueluongtu.com',

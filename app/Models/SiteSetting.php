@@ -34,4 +34,23 @@ class SiteSetting extends Model
             'He thong su dung trai nghiem hinh anh va am thanh mo phong trang thai: Alpha, Theta, Deep Relaxation, Focus State.'
         ) ?? '';
     }
+
+    public static function paymentAccount(): array
+    {
+        $values = static::query()
+            ->whereIn('key', [
+                'payment_bank_name',
+                'payment_bank_code',
+                'payment_account_no',
+                'payment_account_name',
+            ])
+            ->pluck('value', 'key');
+
+        return [
+            'bank_name' => $values->get('payment_bank_name'),
+            'bank_code' => $values->get('payment_bank_code'),
+            'account_no' => $values->get('payment_account_no'),
+            'account_name' => $values->get('payment_account_name'),
+        ];
+    }
 }

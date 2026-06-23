@@ -83,6 +83,52 @@
         </form>
     </section>
 
+    <section class="glass rounded-[32px] p-6">
+        <div class="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[.22em] text-emerald-200/70">Payment Account</p>
+                <h2 class="mt-2 text-2xl font-black">Tài khoản nhận thanh toán</h2>
+                <p class="mt-1 text-sm text-slate-400">Mọi mã VietQR và thông tin chuyển khoản đều sử dụng cấu hình này.</p>
+            </div>
+            <div class="rounded-[24px] border border-emerald-300/20 bg-emerald-400/10 px-5 py-4">
+                <p class="text-xs uppercase tracking-[.18em] text-emerald-200/70">Đang sử dụng</p>
+                <p class="mt-2 font-black text-emerald-100">{{ $paymentSettings['bank_name'] ?: 'Chưa cấu hình' }}</p>
+                <p class="mt-1 font-mono text-sm text-slate-300">{{ $paymentSettings['account_no'] ?: '-' }}</p>
+                <p class="mt-1 text-xs text-slate-400">{{ $paymentSettings['account_name'] ?: '-' }}</p>
+            </div>
+        </div>
+
+        <form method="post" action="{{ route('admin.payment-settings.update') }}" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            @csrf
+            @method('put')
+            <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Ngân hàng</span>
+                <input class="premium-input" name="payment_bank_name" value="{{ old('payment_bank_name', $paymentSettings['bank_name']) }}" placeholder="Tên ngân hàng" required>
+                @error('payment_bank_name')<span class="text-xs text-rose-300">{{ $message }}</span>@enderror
+            </label>
+            <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Mã ngân hàng VietQR</span>
+                <input class="premium-input uppercase" name="payment_bank_code" value="{{ old('payment_bank_code', $paymentSettings['bank_code']) }}" placeholder="Mã ngân hàng VietQR" required>
+                @error('payment_bank_code')<span class="text-xs text-rose-300">{{ $message }}</span>@enderror
+            </label>
+            <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Số tài khoản</span>
+                <input class="premium-input font-mono" name="payment_account_no" inputmode="numeric" value="{{ old('payment_account_no', $paymentSettings['account_no']) }}" placeholder="Số tài khoản" required>
+                @error('payment_account_no')<span class="text-xs text-rose-300">{{ $message }}</span>@enderror
+            </label>
+            <label class="grid gap-2">
+                <span class="text-sm text-slate-400">Tên chủ tài khoản</span>
+                <input class="premium-input" name="payment_account_name" value="{{ old('payment_account_name', $paymentSettings['account_name']) }}" placeholder="Tên chủ tài khoản" required>
+                @error('payment_account_name')<span class="text-xs text-rose-300">{{ $message }}</span>@enderror
+            </label>
+            <div class="md:col-span-2 xl:col-span-4 flex justify-end">
+                <button class="rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 px-6 py-4 font-black text-night shadow-glow transition hover:-translate-y-1">
+                    Lưu cấu hình thanh toán
+                </button>
+            </div>
+        </form>
+    </section>
+
     <section class="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
         <div class="glass rounded-[32px] p-6">
             <div class="mb-5 flex items-center justify-between">

@@ -6,6 +6,7 @@ use App\Models\Lesson;
 use App\Models\LessonUnlock;
 use App\Models\PaymentOrder;
 use App\Models\Plan;
+use App\Models\SiteSetting;
 use App\Services\PaymentProcessor;
 use App\Services\WalletLedgerService;
 use Illuminate\Http\JsonResponse;
@@ -157,6 +158,7 @@ class BillingController extends Controller
 
         return view('billing.show', [
             'order' => $order->load('plan'),
+            'paymentSettings' => SiteSetting::paymentAccount(),
         ]);
     }
 

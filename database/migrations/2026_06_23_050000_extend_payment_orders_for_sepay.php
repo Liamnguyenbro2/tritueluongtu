@@ -13,12 +13,27 @@ return new class extends Migration
 
         Schema::table('payment_orders', function (Blueprint $table) {
             $table->foreignId('plan_id')->nullable()->change();
-            $table->string('order_type', 40)->nullable()->after('code');
-            $table->unsignedBigInteger('item_id')->nullable()->after('order_type');
-            $table->timestamp('expires_at')->nullable()->after('paid_at');
-            $table->index(['order_type', 'status'], 'payment_orders_type_status_idx');
-            $table->foreign('plan_id')->references('id')->on('plans');
         });
+
+        if (! Schema::hasColumn('payment_orders', 'order_type')) {
+            Schema::table('payment_orders', function (Blueprint $table) {
+                $table->string('order_type', 40)->nullable()->after('code');
+            });
+        }
+
+        if (! Schema::hasColumn('payment_orders', 'item_id')) {
+            Schema::table('payment_orders', function (Blueprint $table) {
+                $table->unsignedBigInteger('item_id')->nullable()->after('order_type');
+            });
+        }
+
+        if (! Schema::hasColumn('payment_orders', 'expires_at')) {
+            Schema::table('payment_orders', function (Blueprint $table) {
+                $table->timestamp('expires_at')->nullable()->after('paid_at');
+            });
+        }
+
+        $this->addPlanForeignKeyIfMissing();
     }
 
     public function down(): void
@@ -26,12 +41,22 @@ return new class extends Migration
         $this->dropPlanForeignKeyIfExists();
 
         Schema::table('payment_orders', function (Blueprint $table) {
-            $table->dropIndex('payment_orders_type_status_idx');
             $table->dropColumn(['order_type', 'item_id', 'expires_at']);
         });
 
         Schema::table('payment_orders', function (Blueprint $table) {
             $table->foreignId('plan_id')->nullable(false)->change();
+            $table->foreign('plan_id')->references('id')->on('plans');
+        });
+    }
+
+    private function addPlanForeignKeyIfMissing(): void
+    {
+        if (DB::getDriverName() === 'mysql' && $this->mysqlPlanForeignKeyName() !== null) {
+            return;
+        }
+
+        Schema::table('payment_orders', function (Blueprint $table) {
             $table->foreign('plan_id')->references('id')->on('plans');
         });
     }
@@ -46,6 +71,18 @@ return new class extends Migration
             return;
         }
 
+        $constraintName = $this->mysqlPlanForeignKeyName();
+
+        if (! $constraintName) {
+            return;
+        }
+
+        $escapedConstraintName = str_replace('`', '``', $constraintName);
+        DB::statement("ALTER TABLE `payment_orders` DROP FOREIGN KEY `{$escapedConstraintName}`");
+    }
+
+    private function mysqlPlanForeignKeyName(): ?string
+    {
         $foreignKey = DB::selectOne(<<<'SQL'
             SELECT CONSTRAINT_NAME AS constraint_name
             FROM information_schema.KEY_COLUMN_USAGE
@@ -56,11 +93,6 @@ return new class extends Migration
             LIMIT 1
         SQL);
 
-        if (! $foreignKey?->constraint_name) {
-            return;
-        }
-
-        $constraintName = str_replace('`', '``', $foreignKey->constraint_name);
-        DB::statement("ALTER TABLE `payment_orders` DROP FOREIGN KEY `{$constraintName}`");
+        return $foreignKey?->constraint_name ?: null;
     }
 };
