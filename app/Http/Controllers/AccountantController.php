@@ -178,7 +178,7 @@ class AccountantController extends Controller
         return view('accountant.withdrawals.index', [
             'withdrawals' => $withdrawals,
             'auditLogByWithdrawal' => AccountantAuditLog::query()
-                ->where('target_type', (new WithdrawalRequest())->getMorphClass())
+                ->where('target_type', (new WithdrawalRequest)->getMorphClass())
                 ->whereIn('target_id', $withdrawals->pluck('id'))
                 ->with('actor:id,name,email')
                 ->latest()
@@ -682,7 +682,7 @@ class AccountantController extends Controller
             html_entity_decode('S&#7889; CCCD') => $kyc?->citizen_id ?? $missing,
             html_entity_decode('H&#7885; t&#234;n CCCD') => $kyc?->full_name ?? $missing,
             html_entity_decode('&#272;&#7883;a ch&#7881; CCCD') => $kyc?->address ?? $missing,
-            html_entity_decode('G&#243;i mua') => $order->plan?->name ?? $missing,
+            html_entity_decode('G&#243;i mua') => $order->displayName(),
             html_entity_decode('S&#7889; ti&#7873;n') => number_format((int) $order->amount_vnd, 0, ',', '.').html_entity_decode('&#273;'),
             html_entity_decode('Ng&#226;n h&#224;ng / k&#234;nh') => $this->depositChannelLabel($order).' / '.$this->depositBankLabel($order),
             html_entity_decode('Th&#7901;i gian') => optional($order->paid_at ?? $order->created_at)?->format('d/m/Y H:i:s') ?? '-',
@@ -917,5 +917,3 @@ class AccountantController extends Controller
         };
     }
 }
-
-

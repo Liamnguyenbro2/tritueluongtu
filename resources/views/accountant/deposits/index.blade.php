@@ -88,7 +88,7 @@
                             <td>{{ $kyc?->citizen_id ?? $missing }}</td>
                             <td>{{ $kyc?->full_name ?? $missing }}</td>
                             <td class="max-w-[280px] whitespace-normal">{{ $kyc?->address ?? $missing }}</td>
-                            <td>{{ $order->plan?->name ?? $missing }}</td>
+                            <td>{{ $order->displayName() }}</td>
                             <td class="font-semibold text-emerald-100">{{ number_format((int) $order->amount_vnd, 0, ',', '.') }}{!! html_entity_decode('&#273;') !!}</td>
                             <td>
                                 <div class="font-medium text-white">{{ $channel }}</div>

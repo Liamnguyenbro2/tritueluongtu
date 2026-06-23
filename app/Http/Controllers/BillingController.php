@@ -8,6 +8,7 @@ use App\Models\PaymentOrder;
 use App\Models\Plan;
 use App\Services\PaymentProcessor;
 use App\Services\WalletLedgerService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -120,7 +121,7 @@ class BillingController extends Controller
             $orderMetadata
         );
 
-        return redirect()->route('billing')->with(
+        return redirect()->route('billing.orders.show', $order)->with(
             'status',
             $selectedLesson
                 ? "Tao don QR thanh cong cho bai {$selectedLesson->title}: {$order->code}"
@@ -128,11 +129,45 @@ class BillingController extends Controller
         );
     }
 
+    public function walletTopup(Request $request, PaymentProcessor $payments): RedirectResponse
+    {
+        $data = $request->validate([
+            'amount_vnd' => [
+                'required',
+                'integer',
+                'min:'.config('sepay.wallet_topup_min_vnd', 10000),
+                'max:'.config('sepay.wallet_topup_max_vnd', 500000000),
+            ],
+        ], [
+            'amount_vnd.required' => 'Vui lòng nhập số tiền muốn nạp.',
+            'amount_vnd.integer' => 'Số tiền nạp phải là số nguyên.',
+            'amount_vnd.min' => 'Số tiền nạp tối thiểu là '.number_format((int) config('sepay.wallet_topup_min_vnd', 10000), 0, ',', '.').' đ.',
+            'amount_vnd.max' => 'Số tiền nạp vượt quá giới hạn cho phép.',
+        ]);
+
+        $order = $payments->createWalletTopupOrder($request->user(), (int) $data['amount_vnd']);
+
+        return redirect()->route('billing.orders.show', $order)
+            ->with('status', "Đã tạo mã QR nạp ví: {$order->code}");
+    }
+
     public function show(Request $request, PaymentOrder $order): View
     {
         abort_unless($request->user()->is_admin || $order->user_id === $request->user()->id, 403);
 
-        return view('billing.show', compact('order'));
+        return view('billing.show', [
+            'order' => $order->load('plan'),
+        ]);
+    }
+
+    public function orderStatus(Request $request, PaymentOrder $order): JsonResponse
+    {
+        abort_unless($request->user()->is_admin || $order->user_id === $request->user()->id, 403);
+
+        return response()->json([
+            'status' => $order->status,
+            'paid_at' => $order->paid_at?->toIso8601String(),
+        ]);
     }
 
     private function resolveMonthlyLesson(Request $request, Plan $plan, ?string $lessonId): ?Lesson

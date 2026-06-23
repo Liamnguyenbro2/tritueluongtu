@@ -3,14 +3,20 @@
 namespace App\Services;
 
 use App\Jobs\ProcessSepayWebhookJob;
+use App\Models\PaymentOrder;
 use App\Models\PaymentTransaction;
 use App\Models\SepayWebhookLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class SepayWebhookService
 {
+    public function __construct(
+        private readonly PaymentProcessor $payments,
+    ) {}
+
     public function receive(Request $request): SepayWebhookLog
     {
         $payload = $this->extractPayload($request);
@@ -38,6 +44,35 @@ class SepayWebhookService
         return $log->fresh();
     }
 
+    public function isAuthorized(Request $request): bool
+    {
+        if (! config('sepay.enabled', true)) {
+            return false;
+        }
+
+        $expectedToken = trim((string) (config('sepay.webhook_verify_token') ?: config('sepay.webhook_secret')));
+
+        if ($expectedToken === '') {
+            return true;
+        }
+
+        $authorization = trim((string) $request->header('Authorization'));
+        $authorizationToken = preg_replace('/^(?:Bearer|Apikey)\s+/i', '', $authorization);
+        $providedTokens = array_filter([
+            trim((string) $request->header('X-Sepay-Token')),
+            trim((string) $request->header('X-Webhook-Token')),
+            trim((string) $authorizationToken),
+        ]);
+
+        foreach ($providedTokens as $providedToken) {
+            if (hash_equals($expectedToken, $providedToken)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function process(SepayWebhookLog $log): void
     {
         $payload = is_array($log->payload) ? $log->payload : [];
@@ -52,21 +87,92 @@ class SepayWebhookService
             'reference_code',
             'referenceCode',
         ]) ?? ('sepay-webhook-'.$log->webhook_uuid);
+        $rawContent = $this->extractString($payload, ['order_code', 'orderCode', 'content', 'description']);
+        $orderCode = $this->extractOrderCode($rawContent);
+        $amount = $this->extractAmount($payload);
+        $transactionType = $this->extractString($payload, ['transaction_type', 'transactionType', 'type', 'transferType']) ?? 'bank_transfer';
+        $direction = strtolower((string) $this->extractString($payload, ['transfer_type', 'transferType', 'direction']));
 
-        PaymentTransaction::query()->updateOrCreate(
-            ['gateway_transaction_id' => $gatewayTransactionId],
-            [
-                'gateway' => 'sepay',
-                'order_code' => $this->extractString($payload, ['order_code', 'orderCode', 'content', 'description']),
-                'amount' => $this->extractAmount($payload),
-                'transaction_type' => $this->extractString($payload, ['transaction_type', 'transactionType', 'type']) ?? 'bank_transfer',
-                'status' => $this->extractString($payload, ['status']) ?? 'received',
-                'raw_payload' => $payload,
-                'processed_at' => now(),
-            ]
-        );
+        DB::transaction(function () use ($log, $payload, $gatewayTransactionId, $orderCode, $amount, $transactionType, $direction) {
+            $transaction = PaymentTransaction::query()->firstOrCreate(
+                ['gateway_transaction_id' => $gatewayTransactionId],
+                [
+                    'gateway' => 'sepay',
+                    'order_code' => $orderCode,
+                    'amount' => $amount,
+                    'transaction_type' => $transactionType,
+                    'status' => 'received',
+                    'raw_payload' => $payload,
+                ]
+            );
 
-        $log->update(['status' => 'processed']);
+            if (! $transaction->wasRecentlyCreated && $transaction->processed_at !== null) {
+                $log->update(['status' => 'duplicate']);
+
+                return;
+            }
+
+            if (! $orderCode) {
+                $this->finishTransaction($transaction, $log, 'invalid_order_code');
+
+                return;
+            }
+
+            if ($amount <= 0) {
+                $this->finishTransaction($transaction, $log, 'invalid_amount');
+
+                return;
+            }
+
+            if (in_array($direction, ['out', 'debit', 'outgoing'], true)) {
+                $this->finishTransaction($transaction, $log, 'ignored_direction');
+
+                return;
+            }
+
+            $order = PaymentOrder::query()
+                ->where('code', $orderCode)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $order) {
+                $this->finishTransaction($transaction, $log, 'order_not_found');
+
+                return;
+            }
+
+            if ((int) $order->amount_vnd !== $amount) {
+                $this->finishTransaction($transaction, $log, 'amount_mismatch');
+
+                return;
+            }
+
+            if ($order->status === 'paid') {
+                $this->finishTransaction($transaction, $log, 'duplicate');
+
+                return;
+            }
+
+            if ($order->status !== 'pending' || $order->expires_at?->isPast()) {
+                if ($order->status === 'pending') {
+                    $order->update(['status' => 'expired']);
+                }
+
+                $this->finishTransaction($transaction, $log, 'order_expired');
+
+                return;
+            }
+
+            $paidAt = $this->extractString($payload, [
+                'transaction_date',
+                'transactionDate',
+                'paid_at',
+                'paidAt',
+            ]);
+
+            $this->payments->complete($order, $gatewayTransactionId, $paidAt);
+            $this->finishTransaction($transaction, $log, 'processed');
+        });
     }
 
     private function extractPayload(Request $request): array
@@ -135,5 +241,29 @@ class SepayWebhookService
         }
 
         return 0;
+    }
+
+    private function extractOrderCode(?string $content): ?string
+    {
+        if (! $content) {
+            return null;
+        }
+
+        if (preg_match('/\bTTLT-[YCPW]-\d+\b/i', $content, $matches) === 1) {
+            return strtoupper($matches[0]);
+        }
+
+        $trimmed = strtoupper(trim($content));
+
+        return $trimmed !== '' ? $trimmed : null;
+    }
+
+    private function finishTransaction(PaymentTransaction $transaction, SepayWebhookLog $log, string $status): void
+    {
+        $transaction->update([
+            'status' => $status,
+            'processed_at' => now(),
+        ]);
+        $log->update(['status' => $status]);
     }
 }

@@ -272,6 +272,43 @@
         @endforeach
     </section>
 
+    <section class="relative overflow-hidden rounded-[32px] border border-emerald-300/15 bg-emerald-400/[.06] p-6 shadow-2xl shadow-black/30 sm:p-8">
+        <div class="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-400/15 blur-3xl"></div>
+        <div class="relative grid gap-6 lg:grid-cols-[1fr_.9fr] lg:items-center">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-[.24em] text-emerald-200/70">Wallet topup</p>
+                <h2 class="mt-3 text-3xl font-black">Nạp tiền vào ví bằng SePay</h2>
+                <p class="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+                    Nhập số tiền, hệ thống sẽ tạo mã VietQR riêng. Ví chỉ được cộng khi SePay xác nhận đúng mã đơn và đúng số tiền.
+                </p>
+            </div>
+            <form method="post" action="{{ route('billing.wallet-topup') }}" class="rounded-[24px] border border-white/10 bg-black/20 p-5">
+                @csrf
+                <label class="grid gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-[.18em] text-slate-400">Số tiền muốn nạp</span>
+                    <input
+                        type="number"
+                        name="amount_vnd"
+                        min="{{ config('sepay.wallet_topup_min_vnd', 10000) }}"
+                        max="{{ config('sepay.wallet_topup_max_vnd', 500000000) }}"
+                        step="1000"
+                        value="{{ old('amount_vnd') }}"
+                        placeholder="Ví dụ: 500000"
+                        class="premium-input"
+                        required
+                    >
+                </label>
+                @error('amount_vnd')
+                    <p class="mt-2 text-sm font-medium text-rose-300">{{ $message }}</p>
+                @enderror
+                <button class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 px-5 py-4 font-black text-night shadow-glow transition hover:-translate-y-1">
+                    <i data-lucide="qr-code" class="h-5 w-5"></i>
+                    Tạo QR nạp ví
+                </button>
+            </form>
+        </div>
+    </section>
+
     <section class="glass rounded-[32px] p-6">
         <div class="mb-5 flex items-center justify-between gap-4">
             <div>
@@ -302,19 +339,22 @@
                         $methodLabel = $method === 'wallet'
                             ? html_entity_decode('V&#237; s&#7889; d&#432;')
                             : html_entity_decode('QR ng&#226;n h&#224;ng');
-                        $statusLabel = $order->status === 'paid'
-                            ? html_entity_decode('&#272;&#227; thanh to&#225;n')
-                            : html_entity_decode('&#272;ang ch&#7901;');
+                        $statusLabel = match ($order->status) {
+                            'paid' => 'Đã thanh toán',
+                            'expired' => 'Đã hết hạn',
+                            'cancelled' => 'Đã hủy',
+                            default => 'Đang chờ',
+                        };
                         $selectedLesson = data_get($order->metadata, 'selected_lesson_title');
                     @endphp
                     <tr class="text-slate-300 transition hover:bg-white/[.04]">
                         <td class="py-4 font-mono text-violet-100"><a href="{{ route('billing.orders.show', $order) }}">{{ $order->code }}</a></td>
-                        <td>{{ $order->plan?->name }}</td>
+                        <td>{{ $order->displayName() }}</td>
                         <td>{{ $selectedLesson ?: '-' }}</td>
                         <td>{{ $methodLabel }}</td>
                         <td>{{ number_format($order->amount_vnd, 0, ',', '.') }} &#273;</td>
                         <td>
-                            <span class="rounded-full px-3 py-1 text-xs font-bold {{ $order->status === 'paid' ? 'bg-emerald-400/10 text-emerald-100' : 'bg-amber-300/10 text-amber-100' }}">
+                            <span class="rounded-full px-3 py-1 text-xs font-bold {{ $order->status === 'paid' ? 'bg-emerald-400/10 text-emerald-100' : ($order->status === 'pending' ? 'bg-amber-300/10 text-amber-100' : 'bg-rose-400/10 text-rose-100') }}">
                                 {{ $statusLabel }}
                             </span>
                         </td>

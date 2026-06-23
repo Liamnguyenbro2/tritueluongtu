@@ -20,26 +20,41 @@ class PaymentProcessor
         private readonly WalletLedgerService $ledger,
         private readonly ReferralCommissionService $referrals,
         private readonly TransactionLogService $transactionLogs,
-    ) {
-    }
+    ) {}
 
     public function createOrder(int $userId, int $planId, int $amountVnd, string $paymentMethod = 'bank_qr', array $metadata = []): PaymentOrder
     {
         $user = User::query()->findOrFail($userId);
         $plan = Plan::query()->findOrFail($planId);
         $transactionType = $this->transactionLogs->determinePlanTransactionType($user);
+        $orderType = isset($metadata['selected_lesson_id'])
+            ? PaymentOrder::TYPE_COURSE
+            : ($plan->code === config('quantum.plans.yearly_code')
+                ? PaymentOrder::TYPE_YEARLY_PLAN
+                : PaymentOrder::TYPE_PLAN);
 
         $order = PaymentOrder::query()->create([
             'user_id' => $userId,
             'plan_id' => $planId,
-            'code' => 'QI'.Str::upper(Str::random(8)),
+            'code' => 'TMP-'.Str::uuid(),
+            'order_type' => $orderType,
+            'item_id' => $metadata['selected_lesson_id'] ?? $planId,
             'amount_vnd' => $amountVnd,
             'status' => 'pending',
+            'expires_at' => now()->addMinutes((int) config('sepay.order_expire_minutes', 30)),
             'metadata' => array_merge([
                 'payment_method' => $paymentMethod,
-                'qr' => $paymentMethod === 'bank_qr' ? config('quantum.bank_qr') : null,
                 'transaction_type' => $transactionType,
+                'bank_code' => config('quantum.bank_qr.bank_code'),
+                'bank_name' => config('quantum.bank_qr.bank_code'),
             ], $metadata),
+        ]);
+
+        $order->update([
+            'code' => $this->orderCode($order),
+            'metadata' => array_merge($order->metadata ?? [], [
+                'qr' => $paymentMethod === 'bank_qr' ? config('quantum.bank_qr') : null,
+            ]),
         ]);
 
         $this->transactionLogs->upsertPaymentOrderLog(
@@ -51,6 +66,31 @@ class PaymentProcessor
         );
 
         return $order;
+    }
+
+    public function createWalletTopupOrder(User $user, int $amountVnd): PaymentOrder
+    {
+        $order = PaymentOrder::query()->create([
+            'user_id' => $user->id,
+            'plan_id' => null,
+            'code' => 'TMP-'.Str::uuid(),
+            'order_type' => PaymentOrder::TYPE_WALLET_TOPUP,
+            'item_id' => null,
+            'amount_vnd' => $amountVnd,
+            'status' => 'pending',
+            'expires_at' => now()->addMinutes((int) config('sepay.order_expire_minutes', 30)),
+            'metadata' => [
+                'payment_method' => 'bank_qr',
+                'transaction_type' => TransactionLog::TYPE_MONEY_IN,
+                'qr' => config('quantum.bank_qr'),
+                'bank_code' => config('quantum.bank_qr.bank_code'),
+                'bank_name' => config('quantum.bank_qr.bank_code'),
+            ],
+        ]);
+
+        $order->update(['code' => $this->orderCode($order)]);
+
+        return $order->refresh();
     }
 
     public function payWithWallet(User $user, Plan $plan, int $amountVnd, array $metadata = []): PaymentOrder
@@ -86,6 +126,20 @@ class PaymentProcessor
 
             if ($lockedOrder->status === 'paid') {
                 return $lockedOrder;
+            }
+
+            if ($lockedOrder->status !== 'pending') {
+                throw new \RuntimeException('Đơn hàng không còn ở trạng thái chờ thanh toán.');
+            }
+
+            if ($lockedOrder->expires_at?->isPast()) {
+                $lockedOrder->update(['status' => 'expired']);
+
+                throw new \RuntimeException('Đơn hàng đã hết hạn thanh toán.');
+            }
+
+            if ($lockedOrder->order_type === PaymentOrder::TYPE_WALLET_TOPUP) {
+                return $this->completeWalletTopup($lockedOrder, $providerTransactionId, $paidAt);
             }
 
             $lockedOrder->update([
@@ -155,6 +209,38 @@ class PaymentProcessor
 
             return $lockedOrder->refresh();
         });
+    }
+
+    private function completeWalletTopup(PaymentOrder $order, string $providerTransactionId, ?string $paidAt): PaymentOrder
+    {
+        $order->update([
+            'status' => 'paid',
+            'provider_transaction_id' => $providerTransactionId,
+            'paid_at' => $paidAt ? Carbon::parse($paidAt) : now(),
+        ]);
+
+        $user = $order->user()->firstOrFail();
+        $this->ledger->credit(
+            $this->ledger->walletForUser($user),
+            (int) $order->amount_vnd,
+            'sepay_wallet_topup',
+            $order,
+            "Nạp ví tự động qua SePay - {$order->code}"
+        );
+
+        return $order->refresh();
+    }
+
+    private function orderCode(PaymentOrder $order): string
+    {
+        $prefix = match ($order->order_type) {
+            PaymentOrder::TYPE_YEARLY_PLAN => 'Y',
+            PaymentOrder::TYPE_COURSE => 'C',
+            PaymentOrder::TYPE_WALLET_TOPUP => 'W',
+            default => 'P',
+        };
+
+        return "TTLT-{$prefix}-{$order->id}";
     }
 
     private function grantSelectedLessonIfNeeded(User $user, PaymentOrder $order, Plan $plan, Subscription $subscription, Carbon $now): void

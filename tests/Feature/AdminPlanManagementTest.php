@@ -96,7 +96,7 @@ class AdminPlanManagementTest extends TestCase
             ->assertOk()
             ->assertSee('N&#226;ng c&#7845;p g&#243;i', false)
             ->assertSee('S&#7889; d&#432; v&#237;', false)
-            ->assertSee('L&#7883;ch s&#7917; h&#243;a &#273;&#417;n thanh to&#225;n g&#7847;n &#273;&#226;y', false)
+            ->assertSeeText('Lịch sử hóa đơn thanh toán gần đây')
             ->assertSee('Noi dung mo ta moi tren trang billing.')
             ->assertSee('Tinh nang A')
             ->assertSee('Tinh nang B')

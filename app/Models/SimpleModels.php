@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class UserProfile extends Model
 {
@@ -201,20 +200,37 @@ class Subscription extends Model
 
 class PaymentOrder extends Model
 {
+    public const TYPE_YEARLY_PLAN = 'yearly_plan';
+
+    public const TYPE_COURSE = 'course';
+
+    public const TYPE_WALLET_TOPUP = 'wallet_topup';
+
+    public const TYPE_PLAN = 'plan';
+
     protected $fillable = [
         'user_id',
         'plan_id',
         'code',
+        'order_type',
+        'item_id',
         'amount_vnd',
         'status',
         'provider_transaction_id',
         'paid_at',
+        'expires_at',
         'metadata',
     ];
 
     protected function casts(): array
     {
-        return ['paid_at' => 'datetime', 'metadata' => 'array'];
+        return [
+            'item_id' => 'integer',
+            'amount_vnd' => 'integer',
+            'paid_at' => 'datetime',
+            'expires_at' => 'datetime',
+            'metadata' => 'array',
+        ];
     }
 
     public function user()
@@ -225,6 +241,40 @@ class PaymentOrder extends Model
     public function plan()
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function vietQrImageUrl(): ?string
+    {
+        $bankCode = trim((string) config('quantum.bank_qr.bank_code'));
+        $accountNo = preg_replace('/\s+/', '', (string) config('quantum.bank_qr.account_no'));
+
+        if ($bankCode === '' || $accountNo === '') {
+            return null;
+        }
+
+        $baseUrl = rtrim((string) config('sepay.vietqr_image_base_url'), '/');
+        $query = http_build_query([
+            'amount' => (int) $this->amount_vnd,
+            'addInfo' => $this->code,
+            'accountName' => (string) config('quantum.bank_qr.account_name'),
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        return sprintf(
+            '%s/%s-%s-compact2.png?%s',
+            $baseUrl,
+            rawurlencode($bankCode),
+            rawurlencode($accountNo),
+            $query
+        );
+    }
+
+    public function displayName(): string
+    {
+        return match ($this->order_type) {
+            self::TYPE_WALLET_TOPUP => 'Nạp ví',
+            self::TYPE_COURSE => (string) (data_get($this->metadata, 'selected_lesson_title') ?: 'Mở khóa bài học'),
+            default => (string) ($this->plan?->name ?: 'Thanh toán'),
+        };
     }
 }
 

@@ -64,7 +64,9 @@ Route::middleware(['auth', 'not_suspended'])->group(function () {
     Route::get('/plans/{plan}/qr-image', [BillingController::class, 'qrImage'])->name('plans.qr-image');
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing/orders', [BillingController::class, 'store'])->name('billing.orders.store');
+    Route::post('/billing/wallet-topup', [BillingController::class, 'walletTopup'])->name('billing.wallet-topup');
     Route::get('/billing/orders/{order}', [BillingController::class, 'show'])->name('billing.orders.show');
+    Route::get('/billing/orders/{order}/status', [BillingController::class, 'orderStatus'])->name('billing.orders.status');
     Route::post('/voice-sample', [VoiceSampleController::class, 'store'])->name('voice-sample.store');
     Route::post('/voice-sample/complete', [VoiceSampleController::class, 'complete'])->name('voice-sample.complete');
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
