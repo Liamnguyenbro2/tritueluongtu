@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminEmailOtpController;
 use App\Http\Controllers\AdminLessonController;
 use App\Http\Controllers\AdminPlanController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\AdminSepayWebhookController;
 use App\Http\Controllers\AccountantController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\AuthController;
@@ -84,6 +85,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/passwords', [AdminController::class, 'passwords'])->name('passwords');
     Route::post('/passwords', [AdminController::class, 'updateUserPassword'])->name('passwords.update');
     Route::get('/notifications', [AdminAnnouncementController::class, 'index'])->name('notifications.index');
+    Route::get('/sepay-webhooks', [AdminSepayWebhookController::class, 'index'])->name('sepay-webhooks.index');
     Route::put('/notifications/marquee', [AdminAnnouncementController::class, 'updateMarquee'])->name('notifications.marquee.update');
     Route::put('/notifications/fixed', [AdminAnnouncementController::class, 'updateFixed'])->name('notifications.fixed.update');
     Route::post('/notifications/campaigns', [AdminAnnouncementController::class, 'storeCampaign'])->name('notifications.campaigns.store');

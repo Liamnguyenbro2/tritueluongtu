@@ -26,6 +26,8 @@ class ResetProductionData extends Command
         'accountant_audit_logs',
         'withdrawal_requests',
         'bank_webhook_events',
+        'sepay_webhook_logs',
+        'payment_transactions',
         'payment_orders',
         'ledger_entries',
         'wallets',

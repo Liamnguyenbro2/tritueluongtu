@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\PaymentOrder;
+use App\Models\PaymentTransaction;
 use App\Models\Plan;
 use App\Models\ReferralLink;
+use App\Models\SepayWebhookLog;
 use App\Models\Subscription;
 use App\Models\TransactionLog;
 use App\Models\User;
@@ -90,6 +92,25 @@ class ResetProductionDataCommandTest extends TestCase
             'reference_id' => 'TEST-RESET-1',
         ]);
 
+        SepayWebhookLog::query()->create([
+            'webhook_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'headers' => ['x-test' => '1'],
+            'payload' => ['transaction_id' => 'SP-RESET-1'],
+            'ip_address' => '127.0.0.1',
+            'status' => 'processed',
+        ]);
+
+        PaymentTransaction::query()->create([
+            'gateway' => 'sepay',
+            'gateway_transaction_id' => 'SP-RESET-1',
+            'order_code' => 'TXN-RESET-001',
+            'amount' => 199000,
+            'transaction_type' => 'bank_transfer',
+            'status' => 'received',
+            'raw_payload' => ['transaction_id' => 'SP-RESET-1'],
+            'processed_at' => now(),
+        ]);
+
         $this->artisan('system:reset-production-data --force')
             ->assertSuccessful()
             ->expectsOutput('Production data reset completed.');
@@ -100,6 +121,8 @@ class ResetProductionDataCommandTest extends TestCase
         $this->assertDatabaseCount('ledger_entries', 0);
         $this->assertDatabaseCount('transaction_logs', 0);
         $this->assertDatabaseCount('withdrawal_requests', 0);
+        $this->assertDatabaseCount('sepay_webhook_logs', 0);
+        $this->assertDatabaseCount('payment_transactions', 0);
         $this->assertDatabaseHas('users', ['email' => 'admin@example.com']);
         $this->assertDatabaseHas('users', ['email' => 'accountant@example.com']);
         $this->assertDatabaseHas('wallets', ['owner_type' => null, 'owner_id' => null, 'type' => 'admin']);

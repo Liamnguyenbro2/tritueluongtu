@@ -267,6 +267,9 @@
                 <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.notifications.index') }}">
                     <i data-lucide="megaphone" class="h-5 w-5 text-amber-300"></i><span>Thông báo</span>
                 </a>
+                <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.sepay-webhooks.index') }}">
+                    <i data-lucide="badge-dollar-sign" class="h-5 w-5 text-cyan-300"></i><span>Nhật ký Webhook SePay</span>
+                </a>
                 @if(auth()->user()->is_admin)
                     <a class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white hover:shadow-glow" href="{{ route('admin.email-otp.index') }}">
                         <i data-lucide="mail-search" class="h-5 w-5 text-sky-300"></i><span>Cấu hình Email OTP</span>

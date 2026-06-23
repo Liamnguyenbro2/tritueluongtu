@@ -115,3 +115,66 @@ Payload:
   "paid_at": "2026-05-25T09:00:00+07:00"
 }
 ```
+
+## SePay webhook infrastructure
+
+The project now includes a dedicated SePay webhook endpoint for automatic bank transfer callbacks.
+
+### Endpoint
+
+- `POST /api/payment/sepay/webhook`
+- No login required
+- Returns:
+
+```json
+{
+  "success": true
+}
+```
+
+### What is stored
+
+Each incoming webhook stores:
+
+- request headers
+- raw payload fields as JSON
+- sender IP
+- receive time
+- processing status
+
+Data is saved to:
+
+- `sepay_webhook_logs`
+- `payment_transactions`
+
+### Queue flow
+
+1. Webhook hits controller
+2. Controller forwards request to `SepayWebhookService`
+3. Service stores webhook log
+4. Service dispatches `ProcessSepayWebhookJob`
+5. Job records the normalized SePay transaction row
+
+### Admin page
+
+Open:
+
+- `Admin Console -> Nhật ký Webhook SePay`
+
+The page shows:
+
+- receive time
+- sender IP
+- status
+- payload JSON
+- request headers
+
+### Environment
+
+Add to `.env` when needed:
+
+```bash
+SEPAY_ENABLED=true
+SEPAY_WEBHOOK_SECRET=
+SEPAY_WEBHOOK_VERIFY_TOKEN=
+```
