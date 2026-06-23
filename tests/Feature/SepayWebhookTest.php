@@ -147,6 +147,111 @@ class SepayWebhookTest extends TestCase
         $this->assertSame("TTLT-C-{$order->id}", $order->code);
     }
 
+    public function test_sepay_webhook_matches_order_code_when_bank_removes_hyphens_and_appends_reference(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $lesson = Lesson::query()->where('is_trial', false)->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder(
+            $user->id,
+            $plan->id,
+            2000,
+            'bank_qr',
+            [
+                'selected_lesson_id' => $lesson->id,
+                'selected_lesson_title' => $lesson->title,
+                'selected_lesson_price_vnd' => 2000,
+            ]
+        );
+
+        $this->postJson('/api/payment/sepay/webhook', [
+            'id' => 64751829,
+            'content' => str_replace('-', '', $order->code).' FT26175031325390 kC5Y76TL/238972',
+            'transferAmount' => 2000,
+        ])->assertOk();
+
+        $this->assertSame('paid', $order->fresh()->status);
+        $this->assertDatabaseHas('payment_transactions', [
+            'gateway_transaction_id' => '64751829',
+            'order_code' => $order->code,
+            'status' => 'processed',
+        ]);
+        $this->assertDatabaseHas('sepay_webhook_logs', [
+            'status' => 'processed',
+        ]);
+    }
+
+    public function test_sepay_webhook_processes_after_response_without_a_queue_worker(): void
+    {
+        $this->seed();
+        Config::set('queue.default', 'database');
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $lesson = Lesson::query()->where('is_trial', false)->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder(
+            $user->id,
+            $plan->id,
+            2000,
+            'bank_qr',
+            [
+                'selected_lesson_id' => $lesson->id,
+                'selected_lesson_title' => $lesson->title,
+                'selected_lesson_price_vnd' => 2000,
+            ]
+        );
+
+        $this->postJson('/api/payment/sepay/webhook', [
+            'id' => 64757223,
+            'content' => str_replace('-', '', $order->code).' FT26175505645050 kC5YEH6T/277844',
+            'transferAmount' => 2000,
+        ])->assertOk();
+
+        $this->assertSame('paid', $order->fresh()->status);
+        $this->assertDatabaseHas('sepay_webhook_logs', [
+            'status' => 'processed',
+        ]);
+        $this->assertDatabaseCount('jobs', 0);
+    }
+
+    public function test_delayed_webhook_accepts_payment_made_before_order_expired(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $plan = Plan::query()->where('code', 'monthly')->firstOrFail();
+        $lesson = Lesson::query()->where('is_trial', false)->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder(
+            $user->id,
+            $plan->id,
+            2000,
+            'bank_qr',
+            [
+                'selected_lesson_id' => $lesson->id,
+                'selected_lesson_title' => $lesson->title,
+                'selected_lesson_price_vnd' => 2000,
+            ]
+        );
+        $order->update(['expires_at' => now()->subMinute()]);
+        $paidAt = now()->subMinutes(2)->startOfSecond();
+
+        $this->postJson('/api/payment/sepay/webhook', [
+            'id' => 64757224,
+            'transactionDate' => $paidAt->format('Y-m-d H:i:s'),
+            'content' => str_replace('-', '', $order->code).' FT26175505645051',
+            'transferAmount' => 2000,
+        ])->assertOk();
+
+        $this->assertSame('paid', $order->fresh()->status);
+        $this->assertTrue($order->fresh()->paid_at->equalTo($paidAt));
+        $this->assertDatabaseHas('payment_transactions', [
+            'gateway_transaction_id' => '64757224',
+            'status' => 'processed',
+        ]);
+    }
+
     public function test_sepay_webhook_credits_wallet_topup_once(): void
     {
         $this->seed();

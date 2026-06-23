@@ -6,6 +6,7 @@ use App\Jobs\ProcessSepayWebhookJob;
 use App\Models\PaymentOrder;
 use App\Models\PaymentTransaction;
 use App\Models\SepayWebhookLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -39,7 +40,9 @@ class SepayWebhookService
 
         $log->update(['status' => 'queued']);
 
-        ProcessSepayWebhookJob::dispatch($log->id);
+        // Shared hosting may not run a persistent queue worker. Processing after
+        // the response keeps the webhook fast without leaving payments queued.
+        ProcessSepayWebhookJob::dispatchAfterResponse($log->id);
 
         return $log->fresh();
     }
@@ -75,6 +78,10 @@ class SepayWebhookService
 
     public function process(SepayWebhookLog $log): void
     {
+        if (in_array($log->status, ['processed', 'duplicate'], true)) {
+            return;
+        }
+
         $payload = is_array($log->payload) ? $log->payload : [];
         $gatewayTransactionId = $this->extractString($payload, [
             'gateway_transaction_id',
@@ -92,8 +99,15 @@ class SepayWebhookService
         $amount = $this->extractAmount($payload);
         $transactionType = $this->extractString($payload, ['transaction_type', 'transactionType', 'type', 'transferType']) ?? 'bank_transfer';
         $direction = strtolower((string) $this->extractString($payload, ['transfer_type', 'transferType', 'direction']));
+        $paidAt = $this->extractString($payload, [
+            'transaction_date',
+            'transactionDate',
+            'paid_at',
+            'paidAt',
+        ]);
+        $paymentOccurredAt = $paidAt ? Carbon::parse($paidAt) : now();
 
-        DB::transaction(function () use ($log, $payload, $gatewayTransactionId, $orderCode, $amount, $transactionType, $direction) {
+        DB::transaction(function () use ($log, $payload, $gatewayTransactionId, $orderCode, $amount, $transactionType, $direction, $paidAt, $paymentOccurredAt) {
             $transaction = PaymentTransaction::query()->firstOrCreate(
                 ['gateway_transaction_id' => $gatewayTransactionId],
                 [
@@ -153,7 +167,7 @@ class SepayWebhookService
                 return;
             }
 
-            if ($order->status !== 'pending' || $order->expires_at?->isPast()) {
+            if ($order->status !== 'pending' || ($order->expires_at && $paymentOccurredAt->isAfter($order->expires_at))) {
                 if ($order->status === 'pending') {
                     $order->update(['status' => 'expired']);
                 }
@@ -162,13 +176,6 @@ class SepayWebhookService
 
                 return;
             }
-
-            $paidAt = $this->extractString($payload, [
-                'transaction_date',
-                'transactionDate',
-                'paid_at',
-                'paidAt',
-            ]);
 
             $this->payments->complete($order, $gatewayTransactionId, $paidAt);
             $this->finishTransaction($transaction, $log, 'processed');
@@ -249,8 +256,8 @@ class SepayWebhookService
             return null;
         }
 
-        if (preg_match('/\bTTLT-[YCPW]-\d+\b/i', $content, $matches) === 1) {
-            return strtoupper($matches[0]);
+        if (preg_match('/\bTTLT[\s._-]*([YCPW])[\s._-]*(\d+)\b/i', $content, $matches) === 1) {
+            return 'TTLT-'.strtoupper($matches[1]).'-'.$matches[2];
         }
 
         $trimmed = strtoupper(trim($content));

@@ -126,6 +126,7 @@ class PaymentProcessor
     {
         return DB::transaction(function () use ($order, $providerTransactionId, $paidAt) {
             $lockedOrder = PaymentOrder::query()->lockForUpdate()->findOrFail($order->id);
+            $paymentOccurredAt = $paidAt ? Carbon::parse($paidAt) : now();
 
             if ($lockedOrder->status === 'paid') {
                 return $lockedOrder;
@@ -135,7 +136,7 @@ class PaymentProcessor
                 throw new \RuntimeException('Đơn hàng không còn ở trạng thái chờ thanh toán.');
             }
 
-            if ($lockedOrder->expires_at?->isPast()) {
+            if ($lockedOrder->expires_at && $paymentOccurredAt->isAfter($lockedOrder->expires_at)) {
                 $lockedOrder->update(['status' => 'expired']);
 
                 throw new \RuntimeException('Đơn hàng đã hết hạn thanh toán.');
@@ -148,7 +149,7 @@ class PaymentProcessor
             $lockedOrder->update([
                 'status' => 'paid',
                 'provider_transaction_id' => $providerTransactionId,
-                'paid_at' => $paidAt ? Carbon::parse($paidAt) : now(),
+                'paid_at' => $paymentOccurredAt,
             ]);
 
             $user = $lockedOrder->user()->firstOrFail();
