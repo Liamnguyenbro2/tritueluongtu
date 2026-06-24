@@ -65,7 +65,7 @@
         @enderror
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1440px] text-left text-sm">
+            <table class="w-full min-w-[1660px] text-left text-sm">
                 <thead class="text-xs uppercase tracking-[.18em] text-slate-500">
                     <tr>
                         <th class="py-3">STT</th>
@@ -74,7 +74,9 @@
                         <th>{!! html_entity_decode('H&#7885; t&#234;n CCCD') !!}</th>
                         <th>{!! html_entity_decode('Ng&#226;n h&#224;ng') !!}</th>
                         <th>{!! html_entity_decode('STK Ng&#226;n h&#224;ng') !!}</th>
-                        <th>{!! html_entity_decode('S&#7889; ti&#7873;n r&#250;t') !!}</th>
+                        <th>{!! html_entity_decode('T&#7893;ng ti&#7873;n r&#250;t') !!}</th>
+                        <th>{!! html_entity_decode('Thu&#7871; TNCN') !!}</th>
+                        <th>{!! html_entity_decode('Th&#7921;c nh&#7853;n') !!}</th>
                         <th>{!! html_entity_decode('Th&#7901;i gian') !!}</th>
                         <th>{!! html_entity_decode('Tr&#7841;ng th&#225;i') !!}</th>
                         <th>{!! html_entity_decode('H&#224;nh &#273;&#7897;ng') !!}</th>
@@ -99,7 +101,9 @@
                             <td>{{ $kyc?->full_name ?? '-' }}</td>
                             <td>{{ $withdrawal->bankAccount?->bank_name ?? '-' }}</td>
                             <td>{{ $withdrawal->bankAccount?->account_number ?? '-' }}</td>
-                            <td class="font-semibold text-emerald-100">{{ number_format((int) $withdrawal->amount_vnd, 0, ',', '.') }}đ</td>
+                            <td class="font-semibold text-white">{{ number_format((int) $withdrawal->amount_vnd, 0, ',', '.') }}đ</td>
+                            <td class="font-semibold text-amber-100">{{ number_format((int) $withdrawal->pit_amount_vnd, 0, ',', '.') }}đ</td>
+                            <td class="font-semibold text-emerald-100">{{ number_format((int) ($withdrawal->net_amount_vnd ?? $withdrawal->amount_vnd), 0, ',', '.') }}đ</td>
                             <td>{{ $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-' }}</td>
                             <td><span class="rounded-full px-3 py-1 text-xs font-bold {{ $statusClass }}">{{ $statusLabel }}</span></td>
                             <td>
@@ -153,7 +157,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="py-8 text-center text-slate-400">{!! html_entity_decode('Ch&#432;a c&#243; y&#234;u c&#7847;u r&#250;t ti&#7873;n.') !!}</td>
+                            <td colspan="12" class="py-8 text-center text-slate-400">{!! html_entity_decode('Ch&#432;a c&#243; y&#234;u c&#7847;u r&#250;t ti&#7873;n.') !!}</td>
                         </tr>
                     @endforelse
                 </tbody>

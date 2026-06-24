@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\BankAccount;
 use App\Models\WithdrawalRequest;
-use App\Support\SupportedBanks;
 use App\Services\WalletLedgerService;
+use App\Support\SupportedBanks;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -23,7 +24,7 @@ class WalletController extends Controller
             ->latest()
             ->get();
         $heldWithdrawalIds = $rawLedgerEntries
-            ->where('reference_type', (new WithdrawalRequest())->getMorphClass())
+            ->where('reference_type', (new WithdrawalRequest)->getMorphClass())
             ->whereIn('type', ['withdrawal_hold', 'withdrawal_completed'])
             ->pluck('reference_id')
             ->filter()
@@ -51,6 +52,7 @@ class WalletController extends Controller
             'selectedBankName' => old('bank_name', SupportedBanks::normalize($bankAccount?->bank_name) ?? $bankAccount?->bank_name),
             'ledgerEntries' => $ledgerEntries,
             'withdrawals' => WithdrawalRequest::query()->where('user_id', $request->user()->id)->latest()->get(),
+            'withdrawalPitPercent' => (int) config('quantum.withdrawal_personal_income_tax_percent', 10),
         ]);
     }
 
@@ -84,13 +86,18 @@ class WalletController extends Controller
 
     public function withdraw(Request $request, WalletLedgerService $wallets): RedirectResponse
     {
+        $minimumAmount = (int) config('quantum.withdrawal_min_vnd', 100000);
         $request->merge([
             'amount_vnd' => preg_replace('/\D+/', '', (string) $request->input('amount_vnd')),
         ]);
 
         $data = $request->validate([
-            'amount_vnd' => ['required', 'integer', 'min:100000'],
-            'bank_account_id' => ['required', 'exists:bank_accounts,id'],
+            'amount_vnd' => ['required', 'integer', 'min:'.$minimumAmount],
+            'bank_account_id' => [
+                'required',
+                Rule::exists('bank_accounts', 'id')
+                    ->where(fn ($query) => $query->where('user_id', $request->user()->id)),
+            ],
         ], [
             'amount_vnd.required' => 'Vui lòng nhập số tiền cần rút.',
             'amount_vnd.integer' => 'Số tiền rút không hợp lệ.',
@@ -113,18 +120,26 @@ class WalletController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($request, $data, $wallet, $wallets) {
+        $grossAmount = (int) $data['amount_vnd'];
+        $pitRatePercent = (int) config('quantum.withdrawal_personal_income_tax_percent', 10);
+        $pitAmount = intdiv($grossAmount * $pitRatePercent, 100);
+        $netAmount = $grossAmount - $pitAmount;
+
+        DB::transaction(function () use ($request, $data, $wallet, $wallets, $grossAmount, $pitRatePercent, $pitAmount, $netAmount) {
             $nextWithdrawalNumber = ((int) WithdrawalRequest::query()->max('withdrawal_number')) + 1;
 
             $withdrawal = WithdrawalRequest::query()->create([
                 'withdrawal_number' => $nextWithdrawalNumber,
                 'user_id' => $request->user()->id,
                 'bank_account_id' => $data['bank_account_id'],
-                'amount_vnd' => $data['amount_vnd'],
+                'amount_vnd' => $grossAmount,
+                'pit_rate_percent' => $pitRatePercent,
+                'pit_amount_vnd' => $pitAmount,
+                'net_amount_vnd' => $netAmount,
                 'status' => 'pending',
             ]);
 
-            $wallets->debit($wallet, (int) $data['amount_vnd'], 'withdrawal_hold', $withdrawal, 'Tạm giữ yêu cầu rút tiền');
+            $wallets->debit($wallet, $grossAmount, 'withdrawal_hold', $withdrawal, 'Tạm giữ yêu cầu rút tiền');
         });
 
         return back()->with('status', 'Đã tạo yêu cầu rút tiền.');

@@ -261,7 +261,7 @@ class AccountantDashboardTest extends TestCase
             ->assertDownload('deposits_'.now()->format('Ymd').'.xlsx');
 
         $path = $response->baseResponse->getFile()->getPathname();
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $this->assertTrue($zip->open($path) === true);
         $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
         $stylesXml = $zip->getFromName('xl/styles.xml');
@@ -339,6 +339,9 @@ class AccountantDashboardTest extends TestCase
             'user_id' => $user->id,
             'bank_account_id' => $bankAccount->id,
             'amount_vnd' => 100000,
+            'pit_rate_percent' => 10,
+            'pit_amount_vnd' => 10000,
+            'net_amount_vnd' => 90000,
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),
@@ -352,7 +355,7 @@ class AccountantDashboardTest extends TestCase
             ->assertDownload('withdrawals_'.now()->format('d-m-Y').'.xlsx');
 
         $path = $response->baseResponse->getFile()->getPathname();
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $this->assertTrue($zip->open($path) === true);
         $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
         $stylesXml = $zip->getFromName('xl/styles.xml');
@@ -364,6 +367,8 @@ class AccountantDashboardTest extends TestCase
         $this->assertStringContainsString('Nguyen Van A', $sheetXml);
         $this->assertStringContainsString(SupportedBanks::byCode('MB BANK'), $sheetXml);
         $this->assertStringContainsString('123456789', $sheetXml);
+        $this->assertStringContainsString('10.000 VND', $sheetXml);
+        $this->assertStringContainsString('90.000 VND', $sheetXml);
         $this->assertStringContainsString('<cols>', $sheetXml);
         $this->assertStringContainsString('fontId="1"', $stylesXml);
 
@@ -371,6 +376,46 @@ class AccountantDashboardTest extends TestCase
             'actor_user_id' => $accountant->id,
             'action' => 'withdrawal.export.xlsx',
         ]);
+    }
+
+    public function test_personal_income_tax_is_recorded_once_when_withdrawal_is_transferred(): void
+    {
+        $this->seed();
+
+        $accountant = User::query()->where('email', 'accountant@example.com')->firstOrFail();
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $bankAccount = $user->bankAccount()->firstOrCreate([], [
+            'bank_name' => SupportedBanks::byCode('MB BANK'),
+            'account_number' => '123456789',
+            'account_holder' => 'NGUYEN VAN A',
+            'can_edit' => false,
+        ]);
+        $withdrawal = WithdrawalRequest::query()->create([
+            'withdrawal_number' => 1,
+            'user_id' => $user->id,
+            'bank_account_id' => $bankAccount->id,
+            'amount_vnd' => 100000,
+            'pit_rate_percent' => 10,
+            'pit_amount_vnd' => 10000,
+            'net_amount_vnd' => 90000,
+            'status' => 'approved',
+        ]);
+        $taxWallet = app(WalletLedgerService::class)->systemWallet('tax');
+
+        $this->actingAs($accountant)
+            ->post(route('accountant.withdrawals.mark-transferred', $withdrawal))
+            ->assertRedirect();
+        $this->actingAs($accountant)
+            ->post(route('accountant.withdrawals.mark-transferred', $withdrawal))
+            ->assertRedirect();
+
+        $this->assertSame('transferred', $withdrawal->fresh()->status);
+        $this->assertSame(10000, (int) $taxWallet->fresh()->balance_vnd);
+        $this->assertSame(1, DB::table('ledger_entries')
+            ->where('reference_type', $withdrawal->getMorphClass())
+            ->where('reference_id', $withdrawal->id)
+            ->where('type', 'withdrawal_pit_withholding')
+            ->count());
     }
 
     public function test_withdrawal_export_rejects_dates_older_than_seven_days(): void

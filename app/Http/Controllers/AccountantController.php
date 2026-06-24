@@ -288,18 +288,39 @@ class AccountantController extends Controller
         return back()->with('status', 'Da tu choi yeu cau rut tien.');
     }
 
-    public function markTransferred(Request $request, WithdrawalRequest $withdrawal, AccountantAuditLogService $auditLogs): RedirectResponse
+    public function markTransferred(Request $request, WithdrawalRequest $withdrawal, WalletLedgerService $wallets, AccountantAuditLogService $auditLogs): RedirectResponse
     {
         if (! in_array($withdrawal->status, ['approved', 'transferred'], true)) {
             return back()->withErrors(['status' => 'Chi co the danh dau chuyen khoan sau khi da duyet.']);
         }
 
-        $withdrawal->update([
-            'status' => 'transferred',
-            'decided_at' => $withdrawal->decided_at ?? now(),
-        ]);
+        DB::transaction(function () use ($withdrawal, $wallets) {
+            if (
+                (int) $withdrawal->pit_amount_vnd > 0
+                && ! $this->hasWithdrawalLedger($withdrawal, 'withdrawal_pit_withholding')
+            ) {
+                $wallets->credit(
+                    $wallets->systemWallet('tax'),
+                    (int) $withdrawal->pit_amount_vnd,
+                    'withdrawal_pit_withholding',
+                    $withdrawal,
+                    'Khau tru thue TNCN '.(int) $withdrawal->pit_rate_percent.'% tu yeu cau rut tien'
+                );
+            }
 
-        $auditLogs->record($request->user(), 'withdrawal.transferred', 'Danh dau da chuyen khoan '.$this->money($withdrawal->amount_vnd), $withdrawal);
+            $withdrawal->update([
+                'status' => 'transferred',
+                'decided_at' => $withdrawal->decided_at ?? now(),
+            ]);
+        });
+
+        $auditLogs->record(
+            $request->user(),
+            'withdrawal.transferred',
+            'Danh dau da chuyen khoan thuc nhan '.$this->money((int) ($withdrawal->net_amount_vnd ?? $withdrawal->amount_vnd)),
+            $withdrawal,
+            'Thue TNCN: '.$this->money((int) $withdrawal->pit_amount_vnd)
+        );
 
         return back()->with('status', 'Da danh dau chuyen khoan.');
     }
@@ -867,7 +888,9 @@ class AccountantController extends Controller
             html_entity_decode('H&#7885; t&#234;n CCCD') => $withdrawal->user?->kycVerification?->full_name ?? '-',
             html_entity_decode('Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->bank_name ?? '-',
             html_entity_decode('STK Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->account_number ?? '-',
-            html_entity_decode('S&#7889; ti&#7873;n r&#250;t') => number_format((int) $withdrawal->amount_vnd, 0, ',', '.').'Ä‘',
+            html_entity_decode('T&#7893;ng ti&#7873;n r&#250;t') => number_format((int) $withdrawal->amount_vnd, 0, ',', '.').' VND',
+            html_entity_decode('Thu&#7871; TNCN') => number_format((int) $withdrawal->pit_amount_vnd, 0, ',', '.').' VND',
+            html_entity_decode('Th&#7921;c nh&#7853;n') => number_format((int) ($withdrawal->net_amount_vnd ?? $withdrawal->amount_vnd), 0, ',', '.').' VND',
             html_entity_decode('Th&#7901;i gian') => $withdrawal->created_at?->format('d/m/Y H:i:s') ?? '-',
             html_entity_decode('Tr&#7841;ng th&#225;i') => match ($withdrawal->status) {
                 'pending' => html_entity_decode('Ch&#7901; duy&#7879;t'),

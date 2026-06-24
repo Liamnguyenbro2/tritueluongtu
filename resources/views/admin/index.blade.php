@@ -322,18 +322,20 @@
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[760px] text-left text-sm">
                     <thead class="text-xs uppercase tracking-[.18em] text-slate-500">
-                    <tr><th class="py-3">{!! html_entity_decode('ID t&#224;i kho&#7843;n') !!}</th><th>Email</th><th>{!! html_entity_decode('S&#7889; ti&#7873;n') !!}</th><th>{!! html_entity_decode('Tr&#7841;ng th&#225;i') !!}</th><th></th></tr>
+                    <tr><th class="py-3">{!! html_entity_decode('ID t&#224;i kho&#7843;n') !!}</th><th>Email</th><th>{!! html_entity_decode('Chi ti&#7871;t s&#7889; ti&#7873;n') !!}</th><th>{!! html_entity_decode('Tr&#7841;ng th&#225;i') !!}</th><th></th></tr>
                     </thead>
                     <tbody class="divide-y divide-white/10">
                     @foreach($withdrawals as $withdrawal)
                         @php
                             $statusLabel = match ($withdrawal->status) {
                                 'approved' => html_entity_decode('&#272;&#227; duy&#7879;t'),
+                                'transferred' => html_entity_decode('Ho&#224;n th&#224;nh'),
                                 'rejected' => html_entity_decode('T&#7915; ch&#7889;i'),
                                 default => html_entity_decode('Ch&#7901; duy&#7879;t'),
                             };
                             $statusClass = match ($withdrawal->status) {
                                 'approved' => 'bg-emerald-400/10 text-emerald-100',
+                                'transferred' => 'bg-sky-400/10 text-sky-100',
                                 'rejected' => 'bg-rose-400/10 text-rose-100',
                                 default => 'bg-amber-300/10 text-amber-100',
                             };
@@ -341,7 +343,13 @@
                         <tr class="text-slate-300 transition hover:bg-white/[.04]">
                             <td class="py-4">#{{ $withdrawal->user_id }}</td>
                             <td>{{ $withdrawal->user?->email ?? html_entity_decode('Kh&#244;ng x&#225;c &#273;&#7883;nh') }}</td>
-                            <td>{{ number_format($withdrawal->amount_vnd, 0, ',', '.') }} đ</td>
+                            <td class="py-3">
+                                <div class="space-y-1 text-xs">
+                                    <div><span class="text-slate-500">{!! html_entity_decode('T&#7893;ng r&#250;t') !!}:</span> <span class="font-semibold text-white">{{ number_format((int) $withdrawal->amount_vnd, 0, ',', '.') }} đ</span></div>
+                                    <div><span class="text-slate-500">{!! html_entity_decode('Thu&#7871; TNCN') !!}:</span> <span class="font-semibold text-amber-100">{{ number_format((int) $withdrawal->pit_amount_vnd, 0, ',', '.') }} đ</span></div>
+                                    <div><span class="text-slate-500">{!! html_entity_decode('Th&#7921;c nh&#7853;n') !!}:</span> <span class="font-semibold text-emerald-100">{{ number_format((int) ($withdrawal->net_amount_vnd ?? $withdrawal->amount_vnd), 0, ',', '.') }} đ</span></div>
+                                </div>
+                            </td>
                             <td><span class="rounded-full px-3 py-1 text-xs font-bold {{ $statusClass }}">{{ $statusLabel }}</span></td>
                             <td>
                                 @if($withdrawal->status === 'pending')

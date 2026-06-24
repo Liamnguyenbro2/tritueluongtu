@@ -287,12 +287,18 @@ class AuthAndWalletTest extends TestCase
         $this->actingAs($user)->post('/wallet/withdrawals', [
             'bank_account_id' => $user->fresh()->bankAccount->id,
             'amount_vnd' => '150.000',
+            'pit_rate_percent' => 0,
+            'pit_amount_vnd' => 0,
+            'net_amount_vnd' => 150000,
         ])->assertRedirect();
 
         $this->assertDatabaseHas('withdrawal_requests', [
             'user_id' => $user->id,
             'withdrawal_number' => 1,
             'amount_vnd' => 150000,
+            'pit_rate_percent' => 10,
+            'pit_amount_vnd' => 15000,
+            'net_amount_vnd' => 135000,
             'status' => 'pending',
         ]);
         $this->assertSame(50000, $wallet->fresh()->balance_vnd);
@@ -306,6 +312,8 @@ class AuthAndWalletTest extends TestCase
         $this->actingAs($user)
             ->get('/wallet')
             ->assertOk()
+            ->assertSee('Thuế TNCN')
+            ->assertSee('Số tiền thực nhận')
             ->assertSee('Tạm giữ yêu cầu rút tiền - 26/05/2026 | 20:20');
 
         Carbon::setTestNow();

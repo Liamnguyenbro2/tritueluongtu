@@ -2,6 +2,7 @@
 
 return [
     'withdrawal_min_vnd' => 100000,
+    'withdrawal_personal_income_tax_percent' => 10,
     'trial_hours' => 48,
     'paid_lesson_active_days' => 7,
     'default_lesson_unlock_price_vnd' => 49000,
