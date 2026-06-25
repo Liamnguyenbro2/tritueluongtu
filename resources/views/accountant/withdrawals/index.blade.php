@@ -65,13 +65,14 @@
         @enderror
 
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[1660px] text-left text-sm">
+            <table class="w-full min-w-[1780px] text-left text-sm">
                 <thead class="text-xs uppercase tracking-[.18em] text-slate-500">
                     <tr>
                         <th class="py-3">STT</th>
                         <th>{!! html_entity_decode('ID T&#224;i kho&#7843;n') !!}</th>
                         <th>{!! html_entity_decode('S&#7889; CCCD') !!}</th>
                         <th>{!! html_entity_decode('H&#7885; t&#234;n CCCD') !!}</th>
+                        <th>{!! html_entity_decode('&#272;&#7883;a ch&#7881; CCCD') !!}</th>
                         <th>{!! html_entity_decode('Ng&#226;n h&#224;ng') !!}</th>
                         <th>{!! html_entity_decode('STK Ng&#226;n h&#224;ng') !!}</th>
                         <th>{!! html_entity_decode('T&#7893;ng ti&#7873;n r&#250;t') !!}</th>
@@ -93,13 +94,16 @@
                             ];
                             [$statusLabel, $statusClass] = $statusMap[$withdrawal->status] ?? ['Khác', 'bg-white/10 text-white'];
                             $kyc = $withdrawal->user?->kycVerification;
+                            $kycAddress = $kyc?->address ?? '-';
+                            $bankName = $withdrawal->bankAccount?->bank_name ?? '-';
                         @endphp
                         <tr class="align-top text-slate-300 transition hover:bg-white/[.04]">
                             <td class="py-4 font-semibold text-white">{{ $withdrawal->withdrawal_number ?? '-' }}</td>
                             <td class="font-semibold text-white">{{ $withdrawal->user?->username ?? '-' }}</td>
                             <td>{{ $kyc?->citizen_id ?? '-' }}</td>
                             <td>{{ $kyc?->full_name ?? '-' }}</td>
-                            <td>{{ $withdrawal->bankAccount?->bank_name ?? '-' }}</td>
+                            <td title="{{ $kycAddress }}">{{ \Illuminate\Support\Str::limit($kycAddress, 15, '...') }}</td>
+                            <td title="{{ $bankName }}">{{ \Illuminate\Support\Str::limit($bankName, 15, '...') }}</td>
                             <td>{{ $withdrawal->bankAccount?->account_number ?? '-' }}</td>
                             <td class="font-semibold text-white">{{ number_format((int) $withdrawal->amount_vnd, 0, ',', '.') }}đ</td>
                             <td class="font-semibold text-amber-100">{{ number_format((int) $withdrawal->pit_amount_vnd, 0, ',', '.') }}đ</td>
@@ -157,7 +161,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="py-8 text-center text-slate-400">{!! html_entity_decode('Ch&#432;a c&#243; y&#234;u c&#7847;u r&#250;t ti&#7873;n.') !!}</td>
+                            <td colspan="13" class="py-8 text-center text-slate-400">{!! html_entity_decode('Ch&#432;a c&#243; y&#234;u c&#7847;u r&#250;t ti&#7873;n.') !!}</td>
                         </tr>
                     @endforelse
                 </tbody>

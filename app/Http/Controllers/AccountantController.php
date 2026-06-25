@@ -886,6 +886,7 @@ class AccountantController extends Controller
             html_entity_decode('ID T&#224;i kho&#7843;n') => $withdrawal->user?->username ?? '-',
             html_entity_decode('S&#7889; CCCD') => $withdrawal->user?->kycVerification?->citizen_id ?? '-',
             html_entity_decode('H&#7885; t&#234;n CCCD') => $withdrawal->user?->kycVerification?->full_name ?? '-',
+            html_entity_decode('&#272;&#7883;a ch&#7881; CCCD') => $withdrawal->user?->kycVerification?->address ?? '-',
             html_entity_decode('Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->bank_name ?? '-',
             html_entity_decode('STK Ng&#226;n h&#224;ng') => $withdrawal->bankAccount?->account_number ?? '-',
             html_entity_decode('T&#7893;ng ti&#7873;n r&#250;t') => number_format((int) $withdrawal->amount_vnd, 0, ',', '.').' VND',
