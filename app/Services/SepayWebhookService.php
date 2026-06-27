@@ -167,14 +167,27 @@ class SepayWebhookService
                 return;
             }
 
-            if ($order->status !== 'pending' || ($order->expires_at && $paymentOccurredAt->isAfter($order->expires_at))) {
+            $canReopenCancelledOrder = in_array($order->status, ['cancelled', 'expired'], true)
+                && $order->expires_at
+                && ! $paymentOccurredAt->isAfter($order->expires_at);
+            $paymentIsAfterExpiry = $order->expires_at
+                && $paymentOccurredAt->isAfter($order->expires_at);
+
+            if (
+                ($order->status !== 'pending' && ! $canReopenCancelledOrder)
+                || $paymentIsAfterExpiry
+            ) {
                 if ($order->status === 'pending') {
-                    $order->update(['status' => 'expired']);
+                    $order->update(['status' => 'cancelled']);
                 }
 
                 $this->finishTransaction($transaction, $log, 'order_expired');
 
                 return;
+            }
+
+            if ($canReopenCancelledOrder) {
+                $order->update(['status' => 'pending']);
             }
 
             $this->payments->complete($order, $gatewayTransactionId, $paidAt);

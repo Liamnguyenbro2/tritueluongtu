@@ -22,8 +22,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BillingController extends Controller
 {
-    public function index(Request $request, WalletLedgerService $wallets): View
+    public function index(Request $request, WalletLedgerService $wallets, PaymentProcessor $payments): View
     {
+        $payments->cancelExpiredOrdersForUser((int) $request->user()->id);
+
         return view('billing.index', [
             'plans' => Plan::query()->orderBy('price_vnd')->get(),
             'lessons' => Lesson::query()
@@ -154,15 +156,17 @@ class BillingController extends Controller
             ->with('status', "Đã tạo mã QR nạp ví: {$order->code}");
     }
 
-    public function show(Request $request, PaymentOrder $order): View
+    public function show(Request $request, PaymentOrder $order, PaymentProcessor $payments): View
     {
         abort_unless(
             $request->user()->isAdmin() || (int) $order->user_id === (int) $request->user()->id,
             403
         );
 
+        $payments->cancelExpiredOrdersForUser((int) $order->user_id);
+
         return view('billing.show', [
-            'order' => $order->load('plan'),
+            'order' => $order->refresh()->load('plan'),
             'paymentSettings' => SiteSetting::paymentAccount(),
         ]);
     }
@@ -198,12 +202,15 @@ class BillingController extends Controller
         ]);
     }
 
-    public function orderStatus(Request $request, PaymentOrder $order): JsonResponse
+    public function orderStatus(Request $request, PaymentOrder $order, PaymentProcessor $payments): JsonResponse
     {
         abort_unless(
             $request->user()->isAdmin() || (int) $order->user_id === (int) $request->user()->id,
             403
         );
+
+        $payments->cancelExpiredOrdersForUser((int) $order->user_id);
+        $order->refresh();
 
         return response()->json([
             'status' => $order->status,

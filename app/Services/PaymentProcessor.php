@@ -96,6 +96,42 @@ class PaymentProcessor
         return $order->refresh();
     }
 
+    public function cancelExpiredOrdersForUser(int $userId): int
+    {
+        $expiredOrders = PaymentOrder::query()
+            ->where('user_id', $userId)
+            ->where('status', 'pending')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->get(['id', 'code']);
+
+        if ($expiredOrders->isEmpty()) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($expiredOrders, $userId) {
+            $orderIds = $expiredOrders->pluck('id');
+            $orderCodes = $expiredOrders->pluck('code');
+
+            $cancelled = PaymentOrder::query()
+                ->whereKey($orderIds)
+                ->where('status', 'pending')
+                ->update(['status' => 'cancelled']);
+
+            TransactionLog::query()
+                ->where('user_id', $userId)
+                ->whereIn('reference_id', $orderCodes)
+                ->where('status', TransactionLog::STATUS_PENDING)
+                ->update([
+                    'status' => TransactionLog::STATUS_FAILED,
+                    'description' => 'Đơn hàng đã hủy do quá thời hạn thanh toán.',
+                    'notes' => 'Không nhận được thanh toán trong thời hạn của mã QR.',
+                ]);
+
+            return $cancelled;
+        });
+    }
+
     public function payWithWallet(User $user, Plan $plan, int $amountVnd, array $metadata = []): PaymentOrder
     {
         return DB::transaction(function () use ($user, $plan, $amountVnd, $metadata) {
@@ -137,7 +173,7 @@ class PaymentProcessor
             }
 
             if ($lockedOrder->expires_at && $paymentOccurredAt->isAfter($lockedOrder->expires_at)) {
-                $lockedOrder->update(['status' => 'expired']);
+                $lockedOrder->update(['status' => 'cancelled']);
 
                 throw new \RuntimeException('Đơn hàng đã hết hạn thanh toán.');
             }

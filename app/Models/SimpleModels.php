@@ -279,6 +279,19 @@ class PaymentOrder extends Model
             default => (string) ($this->plan?->name ?: 'Thanh toán'),
         };
     }
+
+    public function packageName(): string
+    {
+        if ($this->order_type === self::TYPE_WALLET_TOPUP) {
+            return 'Nạp ví';
+        }
+
+        return match ($this->plan?->code) {
+            config('quantum.plans.monthly_code') => 'Gói Tháng',
+            config('quantum.plans.yearly_code') => 'Gói Năm',
+            default => (string) ($this->plan?->name ?: 'Thanh toán'),
+        };
+    }
 }
 
 class BankWebhookEvent extends Model

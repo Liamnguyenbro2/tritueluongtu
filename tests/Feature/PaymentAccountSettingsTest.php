@@ -127,4 +127,60 @@ class PaymentAccountSettingsTest extends TestCase
             ->get(route('billing.orders.qr-image', $order))
             ->assertForbidden();
     }
+
+    public function test_invoice_history_separates_package_name_from_lesson_name(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $monthlyPlan = Plan::query()->where('code', config('quantum.plans.monthly_code'))->firstOrFail();
+        $yearlyPlan = Plan::query()->where('code', config('quantum.plans.yearly_code'))->firstOrFail();
+
+        $monthlyOrder = app(PaymentProcessor::class)->createOrder(
+            $user->id,
+            $monthlyPlan->id,
+            49000,
+            'bank_qr',
+            [
+                'selected_lesson_id' => 1,
+                'selected_lesson_title' => 'Sức Khỏe Dồi Dào',
+            ]
+        )->load('plan');
+        $yearlyOrder = app(PaymentProcessor::class)
+            ->createOrder($user->id, $yearlyPlan->id, (int) $yearlyPlan->price_vnd)
+            ->load('plan');
+
+        $this->assertSame('Gói Tháng', $monthlyOrder->packageName());
+        $this->assertSame('Sức Khỏe Dồi Dào', $monthlyOrder->displayName());
+        $this->assertSame('Gói Năm', $yearlyOrder->packageName());
+
+        $this->actingAs($user)
+            ->get(route('billing'))
+            ->assertOk()
+            ->assertSeeText('Gói Tháng')
+            ->assertSeeText('Gói Năm')
+            ->assertSeeText('Sức Khỏe Dồi Dào');
+    }
+
+    public function test_unpaid_expired_order_is_automatically_cancelled(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $plan = Plan::query()->where('code', config('quantum.plans.yearly_code'))->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, (int) $plan->price_vnd);
+        $order->update(['expires_at' => now()->subSecond()]);
+
+        $this->actingAs($user)
+            ->get(route('billing'))
+            ->assertOk()
+            ->assertSeeText('Đã hủy');
+
+        $this->assertSame('cancelled', $order->fresh()->status);
+
+        $this->actingAs($user)
+            ->get(route('billing.orders.status', $order))
+            ->assertOk()
+            ->assertJson(['status' => 'cancelled']);
+    }
 }

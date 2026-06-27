@@ -554,6 +554,18 @@ class AuthAndWalletTest extends TestCase
             ->assertSee('Mở khóa tài khoản');
     }
 
+    public function test_normal_account_status_is_not_shown_as_a_notification(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('billing'))
+            ->assertOk()
+            ->assertDontSee('Tài khoản đang hoạt động bình thường.');
+    }
+
     public function test_admin_report_all_period_shows_affiliate_and_income_pie_totals(): void
     {
         $this->seed();

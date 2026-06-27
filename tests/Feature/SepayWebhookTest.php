@@ -237,6 +237,9 @@ class SepayWebhookTest extends TestCase
         $order->update(['expires_at' => now()->subMinute()]);
         $paidAt = now()->subMinutes(2)->startOfSecond();
 
+        $this->actingAs($user)->get(route('billing'))->assertOk();
+        $this->assertSame('cancelled', $order->fresh()->status);
+
         $this->postJson('/api/payment/sepay/webhook', [
             'id' => 64757224,
             'transactionDate' => $paidAt->format('Y-m-d H:i:s'),

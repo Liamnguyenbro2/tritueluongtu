@@ -325,7 +325,7 @@
                     @endphp
                     <tr class="text-slate-300 transition hover:bg-white/[.04]">
                         <td class="py-4 font-mono text-violet-100"><a href="{{ route('billing.orders.show', $order) }}">{{ $order->code }}</a></td>
-                        <td>{{ $order->displayName() }}</td>
+                        <td>{{ $order->packageName() }}</td>
                         <td>{{ $selectedLesson ?: '-' }}</td>
                         <td>{{ $methodLabel }}</td>
                         <td>{{ number_format($order->amount_vnd, 0, ',', '.') }} &#273;</td>

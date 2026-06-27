@@ -7,8 +7,8 @@ use App\Models\Referral;
 use App\Models\SiteSetting;
 use App\Services\WalletLedgerService;
 use Carbon\Carbon;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -76,14 +76,16 @@ class AppServiceProvider extends ServiceProvider
                         ]));
 
                 $activeSuspension = $user->activeSuspension()->first();
-                $notifications->push([
-                    'type' => 'account',
-                    'icon' => $activeSuspension ? 'shield-alert' : 'shield-check',
-                    'title' => 'Trạng thái tài khoản',
-                    'body' => $activeSuspension ? 'Tài khoản đang bị giới hạn: '.$activeSuspension->reason : 'Tài khoản đang hoạt động bình thường.',
-                    'time' => $activeSuspension?->created_at ?? now(),
-                    'tone' => $activeSuspension ? 'rose' : 'emerald',
-                ]);
+                if ($activeSuspension) {
+                    $notifications->push([
+                        'type' => 'account',
+                        'icon' => 'shield-alert',
+                        'title' => 'Trạng thái tài khoản',
+                        'body' => 'Tài khoản đang bị giới hạn: '.$activeSuspension->reason,
+                        'time' => $activeSuspension->created_at,
+                        'tone' => 'rose',
+                    ]);
+                }
 
                 $notifications = $notifications
                     ->sortByDesc('time')
