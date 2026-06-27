@@ -8,6 +8,7 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\PaymentProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PaymentAccountSettingsTest extends TestCase
@@ -85,11 +86,45 @@ class PaymentAccountSettingsTest extends TestCase
         $this->actingAs($user)
             ->get(route('billing.orders.show', $order))
             ->assertOk()
-            ->assertSee($order->code);
+            ->assertSee($order->code)
+            ->assertSeeText('Lưu mã QR về máy')
+            ->assertSeeText('Lưu hình ảnh');
 
         $this->actingAs($user)
             ->get(route('billing.orders.status', $order))
             ->assertOk()
             ->assertJson(['status' => 'pending']);
+    }
+
+    public function test_user_can_download_only_their_own_order_qr_image(): void
+    {
+        $this->seed();
+        Http::fake([
+            '*' => Http::response('fake-png-content', 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $user = User::query()->where('email', 'user@example.com')->firstOrFail();
+        $otherUser = User::query()->create([
+            'username' => 'otheruser',
+            'name' => 'Other User',
+            'email' => 'other@example.com',
+            'phone' => '0900000001',
+            'password' => 'Password1!',
+            'is_admin' => false,
+            'role' => 'user',
+        ]);
+        $plan = Plan::query()->where('code', 'yearly')->firstOrFail();
+        $order = app(PaymentProcessor::class)->createOrder($user->id, $plan->id, (int) $plan->price_vnd);
+
+        $this->actingAs($user)
+            ->get(route('billing.orders.qr-image', [$order, 'download' => 1]))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('Content-Disposition', 'attachment; filename="vietqr-'.$order->code.'.png"')
+            ->assertContent('fake-png-content');
+
+        $this->actingAs($otherUser)
+            ->get(route('billing.orders.qr-image', $order))
+            ->assertForbidden();
     }
 }

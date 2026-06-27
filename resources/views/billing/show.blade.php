@@ -6,6 +6,7 @@
     $selectedLesson = data_get($order->metadata, 'selected_lesson_title');
     $isWalletTopup = $order->order_type === \App\Models\PaymentOrder::TYPE_WALLET_TOPUP;
     $qrImageUrl = $method === 'bank_qr' ? $order->vietQrImageUrl() : null;
+    $localQrImageUrl = $qrImageUrl ? route('billing.orders.qr-image', $order) : null;
     $bank = $paymentSettings;
     $statusLabel = match ($order->status) {
         'paid' => 'Đã thanh toán',
@@ -61,8 +62,21 @@
 
                 <div class="rounded-[28px] border border-violet-300/15 bg-violet-400/[.06] p-5 text-center sm:p-6">
                     <h2 class="text-xl font-black">Quét mã VietQR</h2>
-                    @if($qrImageUrl)
-                        <img src="{{ $qrImageUrl }}" alt="VietQR {{ $order->code }}" class="mx-auto mt-5 aspect-square w-full max-w-[340px] rounded-[28px] bg-white object-contain p-3 shadow-glow">
+                    @if($localQrImageUrl)
+                        <img src="{{ $localQrImageUrl }}" alt="VietQR {{ $order->code }}" class="mx-auto mt-5 aspect-square w-full max-w-[340px] rounded-[28px] bg-white object-contain p-3 shadow-glow" style="-webkit-touch-callout: default">
+                        <button
+                            type="button"
+                            data-save-image-url="{{ $localQrImageUrl }}"
+                            data-save-image-download-url="{{ route('billing.orders.qr-image', [$order, 'download' => 1]) }}"
+                            data-save-image-name="vietqr-{{ $order->code }}.png"
+                            class="mx-auto mt-4 flex w-full max-w-[340px] items-center justify-center gap-2 rounded-2xl border border-violet-200/20 bg-white/[.06] px-4 py-3 text-sm font-bold text-violet-100 transition hover:bg-white/10"
+                        >
+                            <span aria-hidden="true">&#8681;</span>
+                            Lưu mã QR về máy
+                        </button>
+                        <p class="mx-auto mt-3 max-w-[340px] text-xs leading-5 text-slate-400">
+                            Trên iPhone/iPad, chọn <strong class="text-slate-200">Lưu hình ảnh</strong> trong bảng chia sẻ. Nếu bảng chia sẻ không hiện, hãy giữ chạm vào ảnh QR để lưu vào Ảnh.
+                        </p>
                     @else
                         <div class="mx-auto mt-5 grid aspect-square w-full max-w-[340px] place-items-center rounded-[28px] border border-dashed border-rose-300/30 bg-black/20 p-6 text-sm text-rose-100">
                             Admin chưa cấu hình đầy đủ tài khoản nhận thanh toán.
@@ -94,7 +108,69 @@
     </div>
 </section>
 <script>
+    async function saveImageToDevice(imageUrl, fileName, downloadUrl) {
+        try {
+            const response = await fetch(imageUrl, { credentials: 'same-origin' });
+
+            if (!response.ok) {
+                throw new Error('Unable to fetch QR image');
+            }
+
+            const blob = await response.blob();
+            const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+            const canShareFile = typeof navigator.share === 'function'
+                && typeof navigator.canShare === 'function'
+                && navigator.canShare({ files: [file] });
+
+            if (canShareFile) {
+                await navigator.share({
+                    files: [file],
+                    title: fileName,
+                    text: 'Lưu mã QR này vào thiết bị của bạn.',
+                });
+
+                return;
+            }
+
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = objectUrl;
+            anchor.download = fileName;
+            anchor.rel = 'noopener';
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                return;
+            }
+
+            const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent)
+                || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+            if (isAppleMobile) {
+                window.open(imageUrl, '_blank', 'noopener');
+                return;
+            }
+
+            window.location.assign(downloadUrl || imageUrl);
+        }
+    }
+
     document.addEventListener('click', async (event) => {
+        const saveButton = event.target.closest('[data-save-image-url]');
+
+        if (saveButton) {
+            event.preventDefault();
+            await saveImageToDevice(
+                saveButton.dataset.saveImageUrl,
+                saveButton.dataset.saveImageName || 'vietqr.png',
+                saveButton.dataset.saveImageDownloadUrl
+            );
+            return;
+        }
+
         const button = event.target.closest('[data-copy-value]');
 
         if (!button) return;

@@ -12,6 +12,8 @@ use App\Services\WalletLedgerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -162,6 +164,37 @@ class BillingController extends Controller
         return view('billing.show', [
             'order' => $order->load('plan'),
             'paymentSettings' => SiteSetting::paymentAccount(),
+        ]);
+    }
+
+    public function orderQrImage(Request $request, PaymentOrder $order): Response
+    {
+        abort_unless(
+            $request->user()->isAdmin() || (int) $order->user_id === (int) $request->user()->id,
+            403
+        );
+
+        $qrImageUrl = $order->vietQrImageUrl();
+        abort_unless($qrImageUrl, 404);
+
+        $qrRequest = Http::timeout(15)->retry(2, 250);
+
+        if (app()->environment('local')) {
+            $qrRequest->withoutVerifying();
+        }
+
+        $qrResponse = $qrRequest->get($qrImageUrl);
+        abort_unless($qrResponse->successful(), 502);
+
+        $filename = 'vietqr-'.$order->code.'.png';
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($qrResponse->body(), 200, [
+            'Content-Type' => $qrResponse->header('Content-Type') ?: 'image/png',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+            'Cache-Control' => 'no-store, private',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Robots-Tag' => 'noindex, noarchive, nosnippet',
         ]);
     }
 
